@@ -17,7 +17,9 @@ def speach(text):
     f = codecs.open("/tmp/tts", "w", "utf-8")
     f.write(text)
     f.close()
-    os.system("/home/pi/aquestalkpi/AquesTalkPi -f /tmp/tts | aplay")
+    p = subprocess.Popen('/home/pi/aquestalkpi/AquesTalkPi -f /tmp/tts | aplay',
+                         shell=True, stdout=subprocess.PIPE)
+
 
 def track_marker(marker):
     if marker["area"] < 25000:
@@ -29,6 +31,47 @@ def track_marker(marker):
             rr.reverse()
     else:
         rr.forward()
+
+def wii_control():
+    import cwiid
+    speach(u'ウィーコントローラーを準備してください')
+    try:
+        wm = cwiid.Wiimote()
+    except RuntimeError:
+        speach(u'ウィーコントローラーがみつからなかったよ')
+        return
+    speach(u'見つかりました')
+    wm.led = 1
+    for i in range(2):
+        wm.rumble = True
+        time.sleep(0.2)
+        wm.rumble = False
+        time.sleep(0.2)
+    is_wii_control = True
+    wm.rpt_mode = cwiid.RPT_BTN | cwiid.RPT_ACC
+    while is_wii_control:
+        if (wm.state['buttons'] & cwiid.BTN_UP):
+            rr.reverse()
+        elif (wm.state['buttons'] & cwiid.BTN_LEFT):
+            rr.right()
+        elif (wm.state['buttons'] & cwiid.BTN_RIGHT):
+            rr.left()
+        elif (wm.state['buttons'] & cwiid.BTN_DOWN):
+            rr.forward()
+        elif (wm.state['buttons'] & cwiid.BTN_PLUS):
+            gripper_open()
+        elif (wm.state['buttons'] & cwiid.BTN_MINUS):
+            gripper_close()
+        elif (wm.state['buttons'] & cwiid.BTN_1):
+            camera_up()
+        elif (wm.state['buttons'] & cwiid.BTN_2):
+            camera_front()
+        elif (wm.state['buttons'] & cwiid.BTN_HOME):
+            rr.stop()
+            is_wii_control = False
+        else:
+            rr.stop()
+    speach(u'ウィーモードおしまい')
 
 def dance():
     camera_up()
@@ -107,6 +150,8 @@ def init():
     rr.set_led2(False)
 
 def main():
+    tracking_id = None
+
     while True:
         if auto_start and rr.sw2_closed():
             print 'shutdown by switch2'
@@ -114,7 +159,6 @@ def main():
             camera_down()
             time.sleep(2)
             os.system('/sbin/poweroff')
-        tracking_id = None
         markers = md.detect()
         print '.'
         if not markers:
@@ -129,6 +173,8 @@ def main():
                                        marker["area"])
             if marker["id"] == 6:
                 if tracking_id != 6:
+                    if tracking_id is not None:
+                        print 'tracking_id=%d' % tracking_id
                     speach(u'おいかけっこするよ')
                 track_marker(marker)
             elif marker["id"] == 354:
@@ -136,9 +182,7 @@ def main():
                     speach(u'ダンスするね')
                 dance()
             elif marker["id"] == 1014:
-                rr.set_led1(True)
-                rr.set_led2(False)
-                rr.forward()
+                wii_control()
             elif marker["id"] == 724:
                 rr.set_led1(False)
                 rr.set_led2(True)
@@ -152,4 +196,6 @@ if __name__ == '__main__':
         init()
         main()
     except KeyboardInterrupt, e:
+        wiringpi.pwmWrite(GRIPPER_PIN_ID, 0)
+        wiringpi.pwmWrite(CAMERA_PIN_ID, 0)
         GPIO.cleanup()

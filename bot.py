@@ -49,7 +49,7 @@ class RaspiRobotBoard:
         GPIO.output(self.RIGHT_DIR_PIN, right_dir)
 
     def forward(self, seconds=0):
-        self.set_motors(1, 0, 1, 0)
+        self.set_motors(1, 1, 1, 1)
         if seconds > 0:
             time.sleep(seconds)
             self.stop()
@@ -58,7 +58,7 @@ class RaspiRobotBoard:
         self.set_motors(0, 0, 0, 0)
 
     def reverse(self, seconds=0):
-        self.set_motors(1, 1, 1, 1)
+        self.set_motors(1, 0, 1, 0)
         if seconds > 0:
             time.sleep(seconds)
             self.stop()
@@ -102,6 +102,7 @@ def speach(text):
     f.close()
     p = subprocess.Popen('/home/pi/aquestalkpi/AquesTalkPi -f /tmp/tts | aplay',
                          shell=True)
+    return p
     
 
 def get_ip_address_string():
@@ -114,25 +115,25 @@ class RaspiBot:
     GRIPPER_PIN_ID = 12
     CAMERA_PIN_ID = 13
 
-    TRACKING_MARKER_ID = 6
-    DANCE_MARKER_ID = 354
-    WII_MARKER_ID = 1014
+    TRACKING_MARKER_ID = 104
+    DANCE_MARKER_ID = 107
+    WII_MARKER_ID = 110
 
     def __init__(self, auto_start=False):
         GPIO.setwarnings(False)
-        self._md = arucopy.MarkerDetector()
         self._rr = RaspiRobotBoard()
-        wiringpi.wiringPiSetupGpio()
         self._auto_start = auto_start
         if auto_start:
-            if not self._rr.sw1_closed():
+            if self._rr.sw1_closed():
+                speach('こんにちは。よろしくね。')
+            else:
                 print('exit because switch is not closed')
-            speach('開発モードで起動しました')
-            speach('IPアドレスは%s' % get_ip_address_string())
-            sys.exit()
-        else:
-            speach('こんにちは。よろしくね。')
+                speach('開発モードで起動しました').wait()
+                speach('IPアドレスは%s' % get_ip_address_string()).wait()
+                sys.exit()
 
+        self._md = arucopy.MarkerDetector()
+        wiringpi.wiringPiSetupGpio()
         wiringpi.pinMode(self.GRIPPER_PIN_ID, wiringpi.GPIO.PWM_OUTPUT)
         wiringpi.pinMode(self.CAMERA_PIN_ID, wiringpi.GPIO.PWM_OUTPUT)
         wiringpi.pwmSetMode(wiringpi.GPIO.PWM_MODE_MS)
@@ -182,7 +183,7 @@ class RaspiBot:
             time.sleep(0.01)
 
     def track_marker(self, marker):
-        if marker["area"] < 25000:
+        if marker["area"] < 5000:
             if marker["center_x"] < 320 - 50:
                 self._rr.set_motors(0, 1, 1, 1)
             elif marker["center_x"] > 320 + 50:

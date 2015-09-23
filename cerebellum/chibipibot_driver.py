@@ -3,14 +3,18 @@
 import RPi.GPIO as GPIO
 from time import sleep
 
+
 class PwmMotor:
+
     def set_duty_cycle(self, signed_percent):
         pass
+
     def stop(self):
         pass
 
 
 class PwmWithNotMotor(PwmMotor):
+
     def __init__(self, pin1, pin2, pwm_hz=50):
         GPIO.setup(pin1, GPIO.OUT)
         GPIO.setup(pin2, GPIO.OUT)
@@ -18,7 +22,7 @@ class PwmWithNotMotor(PwmMotor):
         self._pwm2 = GPIO.PWM(pin2, pwm_hz)
         self._pwm1.start(100)
         self._pwm2.start(100)
-            
+
     def set_duty_cycle(self, signed_percent):
         if signed_percent > 100:
             signed_percent = 100
@@ -34,7 +38,7 @@ class PwmWithNotMotor(PwmMotor):
         else:
             self._pwm1.ChangeDutyCycle(100)
             self._pwm2.ChangeDutyCycle(100)
-        
+
     def stop(self):
         self.set_duty_cycle(0)
         self._pwm1.stop()
@@ -42,6 +46,7 @@ class PwmWithNotMotor(PwmMotor):
 
 
 class DiffDriveMobileBase(object):
+
     def __init__(self, pwm_motor_l, pwm_motor_r):
         self._motor_l = pwm_motor_l
         self._motor_r = pwm_motor_r
@@ -54,7 +59,9 @@ class DiffDriveMobileBase(object):
         self._motor_l.stop()
         self._motor_r.stop()
 
+
 class TouchSensor(object):
+
     def __init__(self, pin):
         GPIO.setup(pin, GPIO.IN)
         self._pin = pin
@@ -63,11 +70,25 @@ class TouchSensor(object):
         return GPIO.input(self._pin)
 
 
+class ChibiPiBot(object):
+
+    def __init__(self):
+        GPIO.setmode(GPIO.BCM)
+        self._touch_sensor_l = TouchSensor(9)
+        self._touch_sensor_r = TouchSensor(10)
+        self._mobile_base = DiffDriveMobileBase(
+            PwmWithNotMotor(17, 18), PwmWithNotMotor(22, 27))
+
+    def set_velocity(self, vel):
+        self._mobile_base.set_velocity(vel)
+
+    def get_sensor_data(self):
+        '''returns the dictionary which contains sensor data'''
+        return {'touch_l': self._touch_sensor_l.is_touched(),
+                'touch_r': self._touch_sensor_r.is_touched()}
+
+
 if __name__ == '__main__':
-    GPIO.setmode(GPIO.BCM)
-    sensor1 = TouchSensor(9)
-    sensor2 = TouchSensor(10)
-    mobile_base = DiffDriveMobileBase(PwmWithNotMotor(18, 17), PwmWithNotMotor(27, 22))
     mobile_base.set_velocity(50, 0)
     sleep(1)
     mobile_base.set_velocity(0, 100)

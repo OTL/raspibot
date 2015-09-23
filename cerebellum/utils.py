@@ -8,26 +8,32 @@ import codecs
 import os
 import subprocess
 
+
 def speak(text):
-    f = codecs.open("/tmp/tts", "w", "utf-8")
+    AQUESTALK_PATH = '/home/pi/aquestalkpi/AquesTalkPi'
+    TEMP_TEXT_PATH = '/tmp/tts'
+    f = codecs.open(TEMP_TEXT_PATH, 'w', 'utf-8')
     print(text)
     f.write(text)
     f.close()
-    p = subprocess.Popen('/home/pi/aquestalkpi/AquesTalkPi -f /tmp/tts | aplay',
+    p = subprocess.Popen('%s -f %s | aplay' % (AQUESTALK_PATH, TEMP_TEXT_PATH),
                          shell=True)
     return p
-    
+
 
 def get_ip_address_string():
     p = subprocess.Popen('hostname -I', shell=True, stdout=subprocess.PIPE)
     p.wait()
     return p.stdout.read()
 
+
 import urllib2
 import json
 
+
 def get_weather_temperature():
-    weather_data = urllib2.urlopen('http://api.openweathermap.org/data/2.5/weather?q=Tokyo,jp')
+    weather_data = urllib2.urlopen(
+        'http://api.openweathermap.org/data/2.5/weather?q=Tokyo,jp')
     json_weather = json.load(weather_data)
     max_temp = json_weather['main']['temp_max'] - 273.15
     min_temp = json_weather['main']['temp_min'] - 273.15

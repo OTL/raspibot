@@ -10,8 +10,8 @@ import socket
 import numpy as np
 
 
-IMAGE_WIDTH=320
-IMAGE_HEIGHT=240
+IMAGE_WIDTH = 320
+IMAGE_HEIGHT = 240
 
 
 def main():
@@ -32,7 +32,8 @@ def main():
             is_success, encoded_image = cv2.imencode(".jpeg", img,
                                                      [int(cv2.IMWRITE_JPEG_QUALITY), 95])
             if is_success:
-                udp.sendto(encoded_image.tostring(), ("smilerobotics.com", 12345))
+                udp.sendto(encoded_image.tostring(),
+                           ("smilerobotics.com", 12345))
                 print 'sent an image'
             else:
                 print 'failed to encode'
@@ -43,5 +44,4 @@ def main():
 
 
 if __name__ == '__main__':
-	main()
-
+    main()

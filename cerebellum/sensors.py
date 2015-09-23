@@ -1,3 +1,6 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
 import os
 import time
 import subprocess
@@ -53,19 +56,26 @@ class Emotion(object):
 
 class SensorDataCollector(object):
     
-    def __init__(self, robot_driver, emotion):
+    def __init__(self, robot_driver, emotion, cerebrum_getter):
         self._robot_driver = robot_driver
         self._time_sensor = virtual_sensor.TimeSensor()
         self._online_sensor = virtual_sensor.OnlineSensor()
         self._emotion = emotion
+        self._cerebrum_getter = cerebrum_getter
 
     def get_sensor_data(self):
         data = {'from_start_sec': self._time_sensor.get_duration_since_start(),
                 'emotion': self._emotion.get_balance(),
-                'is_online': self.online_sensor.is_online()}
+                'is_online': self.online_sensor.is_online(),
+                'command_velocity': None,
+                'command_speak': None,
+                'oclock_hour': None}
         if self._time_sensor.is_oclock_min():
             data['oclock_hour'] = self._time_sensor.get_current_time().tm_hour
         data.update(self._robot_driver.get_sensor_data())
+        if data['is_online']:
+            commands = self._cerebrum_getter.get_command(data)
+            data.update(commands)
         return data
 
 

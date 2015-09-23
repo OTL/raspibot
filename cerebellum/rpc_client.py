@@ -4,29 +4,23 @@
 from __future__ import print_function
 
 import socket
-import time
-import utils
 import xmlrpclib
 
-from chibi import ChibiPiBot
 
+class CerebrumRpcClient(object):
+    
+    def __init__(self, uri='http://smilerobotics.com:12346')
+        self._rpc = xmlrpclib.ServerProxy(uri)
 
-def main():
-    bot = ChibiPiBot()
-    rpc = xmlrpclib.ServerProxy('http://smilerobotics.com:12346')
-    while True:
-        time.sleep(0.5)
+    def get_command(self, sensor_data):
         try:
             socket.setdefaulttimeout(1)
-            command = rpc.get_command(bot.get_sensor_data())
+            command = self._rpc.get_command(sensor_data)
             socket.setdefaulttimeout(None)
-            if command['velocity']:
-                bot.set_velocity(*command['velocity'])
-            if command['speak']:
-                utils.speak(command['speak'])
+            return command
         except socket.error as e:
             print(e)
-            bot.set_velocity(0, 0)
+            return {}
 
 
 if __name__ == '__main__':

@@ -21,7 +21,7 @@ server.register_introspection_functions()
 
 def get_command(sensor_dict):
     global face_num
-    command = {'speak':u'', 'velocity':(0, 0)}
+    command = {'command_speak':None, 'command_velocity':None}
     speach = u''
     # speak
     if face_num > 0:
@@ -39,8 +39,8 @@ def get_command(sensor_dict):
         vel = (0, 100)
     elif sensor_dict['touch_r']:
         vel = (0, -100)
-    command['speak'] = speach
-    command['velocity'] = vel
+    command['command_speak'] = speach
+    command['command_velocity'] = vel
     return command
 
 server.register_function(get_command)
@@ -63,8 +63,10 @@ if __name__ == "__main__":
             img = cv2.imdecode(narray,1)
             if cv.WaitKey(10) == 27:
                 break
-            face_cascade = cv2.CascadeClassifier('/usr/share/opencv/haarcascades/haarcascade_frontalface_default.xml')
-            eye_cascade = cv2.CascadeClassifier('/usr/share/opencv/haarcascades/haarcascade_eye.xml')
+            face_cascade = cv2.CascadeClassifier(
+                '/usr/share/opencv/haarcascades/haarcascade_frontalface_default.xml')
+            eye_cascade = cv2.CascadeClassifier(
+                '/usr/share/opencv/haarcascades/haarcascade_eye.xml')
             gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
             faces = face_cascade.detectMultiScale(gray, 1.3, 5)
             print faces

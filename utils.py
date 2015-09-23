@@ -8,7 +8,7 @@ import codecs
 import os
 import subprocess
 
-def speach(text):
+def speak(text):
     f = codecs.open("/tmp/tts", "w", "utf-8")
     print(text)
     f.write(text)
@@ -26,7 +26,7 @@ def get_ip_address_string():
 import urllib2
 import json
 
-def get_weather():
+def get_weather_temperature():
     weather_data = urllib2.urlopen('http://api.openweathermap.org/data/2.5/weather?q=Tokyo,jp')
     json_weather = json.load(weather_data)
     max_temp = json_weather['main']['temp_max'] - 273.15

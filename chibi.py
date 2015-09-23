@@ -40,6 +40,7 @@ class PwmWithNotMotor(PwmMotor):
         self._pwm1.stop()
         self._pwm2.stop()
 
+
 class DiffDriveMobileBase(object):
     def __init__(self, pwm_motor_l, pwm_motor_r):
         self._motor_l = pwm_motor_l

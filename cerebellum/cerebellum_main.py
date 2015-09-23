@@ -1,12 +1,12 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+import utils
+import time
 from rpc_client import CerebrumRpcClient
 from sensors import SensorDataCollector
 from sensors import Emotion
 from chibipibot_driver import ChibiPiBot
-import utils
-
 
 class Cerebellum(object):
 
@@ -18,11 +18,16 @@ class Cerebellum(object):
                                            cerebrum_getter=CerebrumRpcClient())
         self._last_sensor_dict = self._sensor.get_sensor_data()
         self._command = {}
+        self._last_speak_pipe = None
 
     def execute(self, command):
         '''
         dance, velocity, speak, emotion
         '''
+        if 'speak' in command:
+            if self._last_speak_pipe:
+                self._last_speak_pipe.wait()
+            self._last_speak_pipe = utils.speak(command['speak'])
         if 'dance' in command:
             if command['dance'] == 1:
                 self._robot_driver.set_velocity(100, 0)
@@ -38,8 +43,6 @@ class Cerebellum(object):
                 self._robot_driver.set_velocity(0, 0)
         if 'velocity' in command:
             self._robot_driver.set_velocity(*command['velocity'])
-        if 'speak' in command:
-            utils.speak(command['speak'])
         if 'emotion' in command:
             self._emotion.add_positive(command['emotion'])
 
@@ -115,7 +118,9 @@ class Cerebellum(object):
 def main():
     c = Cerebellum()
     while True:
-        c.execute(c.get_command())
+        command = c.get_command()
+        print command
+        c.execute(command)
         time.sleep(0.1)
 
 if __name__ == '__main__':

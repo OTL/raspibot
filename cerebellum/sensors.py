@@ -4,9 +4,9 @@
 import os
 import time
 import subprocess
+import threading
 
-
-class TimeSensor(object)
+class TimeSensor(object):
     
     def __init__(self):
         self._initial_time = time.localtime()
@@ -25,8 +25,18 @@ class OnlineSensor(object):
 
     def __init__(self, server='smilerobotics.com'):
         self._server = server
+        self._is_online = self.update_state()
+        self._thread = threading.Thread(target=self.update_state_loop)
+        self._thread.setDaemon(True)
+        self._thread.start()
 
     def is_online(self):
+        return self._is_online
+
+    def update_state_loop(self):
+        self._is_online = self.update_state()
+
+    def update_state(self):
         devnull = open(os.devnull, 'wb')
         is_online = subprocess.call(['ping', '-c1', self._server],
                                     stdout=devnull,
@@ -58,15 +68,15 @@ class SensorDataCollector(object):
     
     def __init__(self, robot_driver, emotion, cerebrum_getter):
         self._robot_driver = robot_driver
-        self._time_sensor = virtual_sensor.TimeSensor()
-        self._online_sensor = virtual_sensor.OnlineSensor()
+        self._time_sensor = TimeSensor()
+        self._online_sensor = OnlineSensor()
         self._emotion = emotion
         self._cerebrum_getter = cerebrum_getter
 
     def get_sensor_data(self):
         data = {'from_start_sec': self._time_sensor.get_duration_since_start(),
                 'emotion': self._emotion.get_balance(),
-                'is_online': self.online_sensor.is_online(),
+                'is_online': self._online_sensor.is_online(),
                 'command_velocity': None,
                 'command_speak': None,
                 'oclock_hour': None}

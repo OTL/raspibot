@@ -2,8 +2,8 @@
 # -*- coding: utf-8 -*-
 
 import RPi.GPIO as GPIO
-from time import sleep
-
+import threading
+import time
 
 class PwmMotor:
 
@@ -79,28 +79,26 @@ class ChibiPiBot(object):
         self._touch_sensor_r = TouchSensor(10)
         self._mobile_base = DiffDriveMobileBase(
             PwmWithNotMotor(17, 18), PwmWithNotMotor(22, 27))
+        self._thread = threading.Thread(target=self._check_timeout)
+        self._thread.setDaemon(True)
+        self._thread.start()
+        self._lock = threading.Lock()
+        self._last_updated_time = time.mktime(time.localtime())
 
-    def set_velocity(self, vel):
-        self._mobile_base.set_velocity(vel)
+    def _check_timeout(self):
+        while True:
+            time.sleep(0.1)
+            if time.mktime(time.localtime()) - self._last_updated_time > 1.0:
+                with self._lock:
+                    self._mobile_base.set_velocity(0, 0)
+
+
+    def set_velocity(self, vel_x, vel_theta=0):
+        with self._lock:
+            self._mobile_base.set_velocity(vel_x, vel_theta)
+        self._last_updated_time = time.mktime(time.localtime())
 
     def get_sensor_data(self):
         '''returns the dictionary which contains sensor data'''
         return {'touch_l': self._touch_sensor_l.is_touched(),
                 'touch_r': self._touch_sensor_r.is_touched()}
-
-
-if __name__ == '__main__':
-    mobile_base.set_velocity(50, 0)
-    sleep(1)
-    mobile_base.set_velocity(0, 100)
-    sleep(1)
-    mobile_base.set_velocity(0, -100)
-    sleep(1)
-    mobile_base.set_velocity(-50, 0)
-    sleep(1)
-    mobile_base.set_velocity(100, 0)
-    sleep(1)
-    mobile_base.set_velocity(0, 0)
-    sleep(1)
-    mobile_base.stop()
-    GPIO.cleanup()

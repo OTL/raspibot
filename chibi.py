@@ -54,9 +54,19 @@ class DiffDriveMobileBase(object):
         self._motor_l.stop()
         self._motor_r.stop()
 
+class TouchSensor(object):
+    def __init__(self, pin):
+        GPIO.setup(pin, GPIO.IN)
+        self._pin = pin
+
+    def is_touched(self):
+        return GPIO.input(self._pin)
+
 
 if __name__ == '__main__':
     GPIO.setmode(GPIO.BCM)
+    sensor1 = TouchSensor(9)
+    sensor2 = TouchSensor(10)
     mobile_base = DiffDriveMobileBase(PwmWithNotMotor(18, 17), PwmWithNotMotor(27, 22))
     mobile_base.set_velocity(50, 0)
     sleep(1)

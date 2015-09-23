@@ -16,8 +16,12 @@ def speak(text):
     print(text)
     f.write(text)
     f.close()
+    devnull = open(os.devnull, 'wb')
     p = subprocess.Popen('%s -f %s | aplay' % (AQUESTALK_PATH, TEMP_TEXT_PATH),
+                         stdout=devnull,
+                         stderr=devnull,
                          shell=True)
+    devnull.close()
     return p
 
 

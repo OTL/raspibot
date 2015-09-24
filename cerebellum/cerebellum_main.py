@@ -1,5 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
+import sys, codecs
+sys.stdout = codecs.lookup('utf_8')[-1](sys.stdout)
 
 import os
 import threading
@@ -49,35 +51,40 @@ class Cerebellum(object):
                 self._robot_driver.set_velocity(0, -100)
                 time.sleep(1)
                 self._robot_driver.set_velocity(0, 0)
+            if command['dance'] == 3:
+                self._robot_driver.set_velocity(0, 100)
+                time.sleep(0.2)
+                self._robot_driver.set_velocity(0, 0)
+            if command['dance'] == 4:
+                self._robot_driver.set_velocity(0, -100)
+                time.sleep(0.2)
+                self._robot_driver.set_velocity(0, 0)
         if 'velocity' in command:
             self._robot_driver.set_velocity(*command['velocity'])
         if 'emotion' in command:
+            # reset all negatives by positive feedback
+            if command['emotion'] > 0 and self._emotion.get_balance() < 0:
+                self._emotion.reset()
             self._emotion.add_positive(command['emotion'])
         if 'system' in command:
             if command['system'] == 'poweroff':
                 self._robot_driver.set_velocity(0, 0)
                 os.system('poweroff')
 
-    def get_command(self):
+    def get_sensor_data(self):
+        sensor_dict = self._sensor.get_sensor_data()
+        sensor_dict.update(self._vision.get_sensor_data())
+        return sensor_dict
+
+    def get_command(self, sensor_dict):
         '''
         touch_l, touch_r, command_velocity, command_speak, from_start_sec,
         emotion, is_online, oclock_hour
         '''
-        sensor_dict = self._sensor.get_sensor_data()
-        sensor_dict.update(self._vision.get_sensor_data())
         #
         # Use cerebrum commands
         #
         command = {}
-        used_cerebrum = False
-        if sensor_dict['command_velocity']:
-            command['velocity'] = sensor_dict['command_velocity']
-            used_cerebrum = True
-        if sensor_dict['command_speak']:
-            command['speak'] = sensor_dict['command_speak']
-            used_cerebrum = True
-        if used_cerebrum:
-            return
         #
         # Use cerebellum
         #
@@ -86,13 +93,13 @@ class Cerebellum(object):
             command['velocity'] = (-100, 0)
             command['emotion'] = -1000
         elif sensor_dict['touch_l']:
-            command['velocity'] = (0, 100)
+            command['dance'] = 3
             command['speak'] = u'左へ曲がるよ'
-            command['emotion'] = 1000
+            command['emotion'] = 500
         elif sensor_dict['touch_r']:
-            command['velocity'] = (0, -100)
+            command['dance'] = 4
             command['speak'] = u'右へ曲がるよ'
-            command['emotion'] = 1000
+            command['emotion'] = 500
         
         if sensor_dict['emotion'] > 3000:
             command['speak'] = u'楽しくなってきた！'
@@ -126,15 +133,27 @@ class Cerebellum(object):
         if sensor_dict['darkness'] and sensor_dict['touch_l'] and sensor_dict['touch_r']:
             command['speak'] = u'電源を切ります'
             command['system'] = 'poweroff'
+        if not command:
+            command['emotion'] = -10
+        #
+        # overwrite by brain
+        #
+        if sensor_dict['command_velocity']:
+            command['velocity'] = sensor_dict['command_velocity']
+        if sensor_dict['command_speak']:
+            command['speak'] = sensor_dict['command_speak']
 
         self._last_sensor_dict = sensor_dict
         return command
 
 
 def main():
+    utils.speak(u'ちびぱいぼっときどうしました！')
     c = Cerebellum()
     while True:
-        command = c.get_command()
+        sensor = c.get_sensor_data()
+        print sensor
+        command = c.get_command(sensor)
         print command
         c.execute(command)
         time.sleep(0.1)

@@ -39,7 +39,6 @@ class DarknessRecognizer(object):
         hsv_img = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
         dark_pixels = cv2.inRange(hsv_img, dark_min, dark_max)
         num_dark_pixels = cv2.countNonZero(dark_pixels)
-        print num_dark_pixels
         if num_dark_pixels > area_threshold * IMAGE_WIDTH * IMAGE_HEIGHT / 100:
             return True
         return False
@@ -65,6 +64,7 @@ class VisionSensor(object):
         for frame in self._camera.capture_continuous(self._rawCapture,
                                                      format="bgr", use_video_port=True):
             try:
+                print 'cap'
                 img = frame.array
                 self._rawCapture.truncate(0)
                 if not self._jpeg_sender.send_image(img):

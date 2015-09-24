@@ -16,7 +16,7 @@ class RequestHandler(SimpleXMLRPCRequestHandler):
 
 # Create server
 server = SimpleXMLRPCServer(("0.0.0.0", 12346),
-                            requestHandler=RequestHandler)
+                            requestHandler=RequestHandler, allow_none=True)
 server.register_introspection_functions()
 
 def get_command(sensor_dict):

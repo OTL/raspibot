@@ -1,12 +1,16 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-import utils
+import os
+import threading
 import time
+
 from rpc_client import CerebrumRpcClient
 from sensors import SensorDataCollector
 from sensors import Emotion
 from chibipibot_driver import ChibiPiBot
+import utils
+import vision
 
 class Cerebellum(object):
 
@@ -17,8 +21,12 @@ class Cerebellum(object):
                                            emotion=self._emotion,
                                            cerebrum_getter=CerebrumRpcClient())
         self._last_sensor_dict = self._sensor.get_sensor_data()
+        self._vision = vision.VisionSensor()
         self._command = {}
         self._last_speak_pipe = None
+        self._vision_thread = threading.Thread(target=self._vision.main)
+        self._vision_thread.setDaemon(True)
+        self._vision_thread.start()
 
     def execute(self, command):
         '''
@@ -45,7 +53,10 @@ class Cerebellum(object):
             self._robot_driver.set_velocity(*command['velocity'])
         if 'emotion' in command:
             self._emotion.add_positive(command['emotion'])
-
+        if 'system' in command:
+            if command['system'] == 'poweroff':
+                self._robot_driver.set_velocity(0, 0)
+                os.system('poweroff')
 
     def get_command(self):
         '''
@@ -53,6 +64,7 @@ class Cerebellum(object):
         emotion, is_online, oclock_hour
         '''
         sensor_dict = self._sensor.get_sensor_data()
+        sensor_dict.update(self._vision.get_sensor_data())
         #
         # Use cerebrum commands
         #
@@ -110,6 +122,10 @@ class Cerebellum(object):
             if hour:
                 command['speak'] = u'動き出して%d時間たったよ' % hour
                 command['dance'] = 1
+
+        if sensor_dict['darkness'] and sensor_dict['touch_l'] and sensor_dict['touch_r']:
+            command['speak'] = u'電源を切ります'
+            command['system'] = 'poweroff'
 
         self._last_sensor_dict = sensor_dict
         return command

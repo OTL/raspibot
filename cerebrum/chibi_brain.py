@@ -22,25 +22,9 @@ server.register_introspection_functions()
 def get_command(sensor_dict):
     global face_num
     command = {'command_speak':None, 'command_velocity':None}
-    speach = u''
     # speak
     if face_num > 0:
-        speach = u'こんにちは'
-    elif sensor_dict['touch_l'] and sensor_dict['touch_r']:
-        speach = u'おさないでー'
-    elif sensor_dict['touch_l'] or sensor_dict['touch_r']:
-        speach = u'どーもどーも'
-    vel = (0, 0)
-    if face_num > 0:
-        vel = (100, 0)
-    elif sensor_dict['touch_l'] and sensor_dict['touch_r']:
-        vel = (-100, 0)
-    elif sensor_dict['touch_l']:
-        vel = (0, 100)
-    elif sensor_dict['touch_r']:
-        vel = (0, -100)
-    command['command_speak'] = speach
-    command['command_velocity'] = vel
+        command['command_speak'] = u'こんにちは'
     return command
 
 server.register_function(get_command)

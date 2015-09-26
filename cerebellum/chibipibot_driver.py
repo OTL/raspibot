@@ -74,6 +74,7 @@ class TouchSensor(object):
 class ChibiPiBot(object):
 
     def __init__(self):
+        GPIO.setwarnings(False)
         GPIO.setmode(GPIO.BCM)
         self._touch_sensor_l = TouchSensor(9)
         self._touch_sensor_r = TouchSensor(10)

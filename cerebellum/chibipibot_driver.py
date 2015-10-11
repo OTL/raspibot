@@ -73,7 +73,7 @@ class TouchSensor(object):
 
 class SpiDriver(object):
 
-    def __init__(self, clk_pin=11, mosi_pin=10, miso_pin=9, ss_pin=9):
+    def __init__(self, clk_pin=11, mosi_pin=10, miso_pin=9, ss_pin=8):
         self._clk = clk_pin
         self._mosi = mosi_pin
         self._miso = miso_pin
@@ -113,13 +113,9 @@ class SpiDriver(object):
             if (GPIO.input(self._miso)):
                 value |= 0x1
             GPIO.output(self._clk, False)
-
-        # 測定結果を標準出力
-        if ch > 0:
-            sys.stdout.write(" ")
         GPIO.output(self._ss, True)
-        sys.stdout.write(str(value))
         return value
+
 
 class ChibiPiBot(object):
 
@@ -161,7 +157,7 @@ class ChibiPiBot(object):
                 'photo_r': self._photo_sensor_r.is_touched(),
                 'mic_r': self._spi.read(0),
                 'mic_l': self._spi.read(1),
-                'temperature': self._spi.read(2),
+                'temperature': self._spi.read(2) * 3.3 / 4096 * 100,
                 }
 
 

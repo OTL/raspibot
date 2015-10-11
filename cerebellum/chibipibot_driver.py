@@ -71,13 +71,67 @@ class TouchSensor(object):
         return GPIO.input(self._pin)
 
 
+class SpiDriver(object):
+
+    def __init__(self, clk_pin=11, mosi_pin=10, miso_pin=9, ss_pin=9):
+        self._clk = clk_pin
+        self._mosi = mosi_pin
+        self._miso = miso_pin
+        self._ss = ss_pin
+        GPIO.setup(mosi_pin, GPIO.OUT)
+        GPIO.setup(miso_pin, GPIO.IN)
+        GPIO.setup(clk_pin, GPIO.OUT)
+        GPIO.setup(ss_pin, GPIO.OUT)
+
+    def read(self, ch):
+        GPIO.output(self._ss,   False)
+        GPIO.output(self._clk,  False)
+        GPIO.output(self._mosi, False)
+        GPIO.output(self._clk,  True)
+        GPIO.output(self._clk,  False)
+
+        # 測定するチャンネルの指定をADコンバータに送信
+        cmd = (ch | 0x18) << 3
+        for i in range(5):
+            if (cmd & 0x80):
+                GPIO.output(self._mosi, True)
+            else:
+                GPIO.output(self._mosi, False)
+            cmd <<= 1
+            GPIO.output(self._clk, True)
+            GPIO.output(self._clk, False)
+        GPIO.output(self._clk, True)
+        GPIO.output(self._clk, False)
+        GPIO.output(self._clk, True)
+        GPIO.output(self._clk, False)
+
+        # 12ビットの測定結果をADコンバータから受信
+        value = 0
+        for i in range(12):
+            value <<= 1
+            GPIO.output(self._clk, True)
+            if (GPIO.input(self._miso)):
+                value |= 0x1
+            GPIO.output(self._clk, False)
+
+        # 測定結果を標準出力
+        if ch > 0:
+            sys.stdout.write(" ")
+        GPIO.output(self._ss, True)
+        sys.stdout.write(str(value))
+        return value
+
 class ChibiPiBot(object):
 
     def __init__(self):
         GPIO.setwarnings(False)
         GPIO.setmode(GPIO.BCM)
-        self._touch_sensor_l = TouchSensor(9)
-        self._touch_sensor_r = TouchSensor(10)
+        self._touch_sensor_l = TouchSensor(19)
+        self._touch_sensor_r = TouchSensor(20)
+        self._photo_sensor_l = TouchSensor(5)
+        self._photo_sensor_r = TouchSensor(6)
+        self._mic_sensor_r = TouchSensor(13)
+        self._spi = SpiDriver()
         self._mobile_base = DiffDriveMobileBase(
             PwmWithNotMotor(17, 18), PwmWithNotMotor(22, 27))
         self._thread = threading.Thread(target=self._check_timeout)
@@ -93,7 +147,6 @@ class ChibiPiBot(object):
                 with self._lock:
                     self._mobile_base.set_velocity(0, 0)
 
-
     def set_velocity(self, vel_x, vel_theta=0):
         with self._lock:
             self._mobile_base.set_velocity(vel_x, vel_theta)
@@ -101,5 +154,24 @@ class ChibiPiBot(object):
 
     def get_sensor_data(self):
         '''returns the dictionary which contains sensor data'''
+        
         return {'touch_l': self._touch_sensor_l.is_touched(),
-                'touch_r': self._touch_sensor_r.is_touched()}
+                'touch_r': self._touch_sensor_r.is_touched(),
+                'photo_l': self._photo_sensor_l.is_touched(),
+                'photo_r': self._photo_sensor_r.is_touched(),
+                'mic_r': self._spi.read(0),
+                'mic_l': self._spi.read(1),
+                'temperature': self._spi.read(2),
+                }
+
+
+if __name__ == '__main__':
+    c = ChibiPiBot()
+    while True:
+        print c.get_sensor_data()
+#        if c.get_sensor_data()['photo_l']:
+#            c.set_velocity(-100)
+#        else:
+#            c.set_velocity(0)
+        time.sleep(0.1)
+

@@ -29,15 +29,24 @@ class Cerebellum(object):
         self._vision_thread = threading.Thread(target=self._vision.main)
         self._vision_thread.setDaemon(True)
         self._vision_thread.start()
+        self._sound_file_dict = {'oclock': 'se_maoudamashii_chime05.wav',
+                                 'face': 'se_maoudamashii_onepoint28.wav',
+                                 'move': 'se_maoudamashii_onepoint24.wav',
+                                 'tired': 'se_maoudamashii_chime05.wav',
+                                 }
 
     def execute(self, command):
         '''
         dance, velocity, speak, emotion
         '''
+        if 'sound' in command:
+            if command['sound'] in self._sound_file_dict:
+                utils.play_sound(self._sound_file_dict[command['sound']])
         if 'speak' in command:
             if self._last_speak_pipe:
                 self._last_speak_pipe.wait()
             self._last_speak_pipe = utils.speak(command['speak'])
+
         if 'dance' in command:
             if command['dance'] == 1:
                 self._robot_driver.set_velocity(100, 0)
@@ -94,19 +103,20 @@ class Cerebellum(object):
             command['emotion'] = -1000
         elif sensor_dict['touch_l']:
             command['dance'] = 3
-            command['speak'] = u'左へ曲がるよ'
+#            command['speak'] = u'左へ曲がるよ'
+            command['sound'] = 'move'
             command['emotion'] = 500
         elif sensor_dict['touch_r']:
             command['dance'] = 4
-            command['speak'] = u'右へ曲がるよ'
+            command['sound'] = 'move'
             command['emotion'] = 500
-        
         if sensor_dict['emotion'] > 3000:
             command['speak'] = u'楽しくなってきた！'
             command['emotion'] = -2000
             command['dance'] = 1
         if sensor_dict['emotion'] < -3000:
-            command['speak'] = u'なんかつまんないなー'
+#            command['speak'] = u'なんかつまんないなー'
+            command['sound'] = 'tired'
             command['emotion'] = 2000
             command['dance'] = 2
 
@@ -115,9 +125,13 @@ class Cerebellum(object):
         if not sensor_dict['is_online'] and self._last_sensor_dict['is_online']:
             command['speak'] = u'ネットワークから切断したみたい'
 
+        if not sensor_dict['is_online'] and 'code' in sensor_dict and sensor_dict['code'] is not None:
+            utils.set_wifi_from_string(sensor_dict['code'])
+
         if sensor_dict['oclock_hour'] is not None and (
             self._last_sensor_dict['oclock_hour'] is None):
             command['speak'] = u'%d時ちょうどになったね' % sensor_dict['oclock_hour']
+            command['sound'] = 'oclock'
             command['dance'] = 1
         def check_hour(i):
             if sensor_dict['from_start_sec'] >= i * 60 * 60 and (
@@ -148,6 +162,7 @@ class Cerebellum(object):
 
 
 def main():
+    utils.play_sound('se_maoudamashii_se_drink02.wav').wait()
     utils.speak(u'ちびぱいぼっときどうしました！')
     c = Cerebellum()
     while True:

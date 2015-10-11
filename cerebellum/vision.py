@@ -6,10 +6,10 @@ import time
 import cv2
 import socket
 import numpy as np
+import zbar
 
 IMAGE_WIDTH = 320
 IMAGE_HEIGHT = 240
-
 
 class ImageJpegUdpSender(object):
 
@@ -34,8 +34,8 @@ class ImageJpegUdpSender(object):
 class DarknessRecognizer(object):
 
     def is_dark(self, image, v_threshold=50, area_threshold=50):
-        dark_min = np.array([0, 0, 0],np.uint8)
-        dark_max = np.array([360, 255, v_threshold],np.uint8)
+        dark_min = np.array([0, 0, 0], np.uint8)
+        dark_max = np.array([360, 255, v_threshold], np.uint8)
         hsv_img = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
         dark_pixels = cv2.inRange(hsv_img, dark_min, dark_max)
         num_dark_pixels = cv2.countNonZero(dark_pixels)
@@ -44,9 +44,30 @@ class DarknessRecognizer(object):
         return False
 
 
+class CodeReader(object):
+
+    def decode(self, img):
+        imgray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+        raw = str(imgray.data)
+        scanner = zbar.ImageScanner()
+#        scanner.parse_config('enable')
+        scanner.set_config(zbar.Symbol.NONE, zbar.Config.ENABLE, 0)
+        scanner.set_config(zbar.Symbol.QRCODE, zbar.Config.ENABLE, 1)
+#        scanner.set_config(zbar.Symbol.CODE128, zbar.Config.ENABLE, 1)
+#        scanner.set_config(zbar.Symbol.ISBN13, zbar.Config.ENABLE, 1)
+        image_zbar = zbar.Image(imgray.shape[1], imgray.shape[0], 'Y800', raw)
+        scanner.scan(image_zbar)
+        for symbol in image_zbar:
+            print '==========='
+            print 'decoded', symbol.type, 'symbol', '"%s"' % symbol.data
+            print '============'
+            return symbol.data
+        return None
+
+
 class VisionSensor(object):
 
-    def __init__(self, image_width=320, image_height=240):
+    def __init__(self, image_width=IMAGE_WIDTH, image_height=IMAGE_HEIGHT):
         # initialize the camera and grab a reference to the raw camera capture
         self._camera = PiCamera()
         self._camera.resolution = (image_width, image_height)
@@ -57,6 +78,7 @@ class VisionSensor(object):
     
         self._jpeg_sender = ImageJpegUdpSender('smilerobotics.com', 12345)
         self._darkness_recognizer = DarknessRecognizer()
+        self._code_reader = CodeReader()
         self._sensor_data = {'darkness': False}
         self._lock = threading.Lock()
 
@@ -70,7 +92,9 @@ class VisionSensor(object):
                 if not self._jpeg_sender.send_image(img):
                     print 'failed to encode image'
                 with self._lock:
+                    cv2.imwrite('hoge.jpg', img)
                     self._sensor_data['darkness'] = self._darkness_recognizer.is_dark(img)
+                    self._sensor_data['code'] = self._code_reader.decode(img)
                 time.sleep(0.01)
             except KeyboardInterrupt:
                 self._jpeg_sender.close()

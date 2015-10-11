@@ -7,6 +7,27 @@ from __future__ import unicode_literals
 import codecs
 import os
 import subprocess
+import re
+
+def set_wifi_from_string(text):
+    '''text is 'ssid:hgoehoge\npasswd:hogehoge' '''
+    m = re.match('^ssid:\s*(.+)\s*^passwd:\s*(.+)\s*', text, re.MULTILINE)
+    if m is not None:
+        ssid = m.group(1)
+        passwd = m.group(2)
+        devnull = open(os.devnull, 'wb')
+        p1 = subprocess.Popen('/usr/bin/wpa_passphrase %s %s |grep -v \#|grep psk= |sed -e s/"\s"psk=//' % (ssid, passwd), stdout=subprocess.PIPE, shell=True)
+        p1.wait()
+        encoded_passwd = p1.stdout.read().replace('\n', '')
+        print(encoded_passwd)
+        p = subprocess.Popen('cat /etc/wpa_supplicant/wpa_supplicant.conf |sed -e s/psk=.*/psk=%s/ | sed -e s/ssid=".*"/ssid="%s"/ > /tmp/wpa_supplicant.conf' % (encoded_passwd, ssid),
+                             stdout=devnull,
+                             stderr=devnull,
+                             shell=True)
+        subprocess.Popen('cp -b /tmp/wpa_supplicant.conf /etc/wpa_supplicant/wpa_supplicant.conf').wait()
+        subprocess.Popen('/etc/init.d/networking restart').wait()
+        devnull.close()
+        print ('%s %s' % (ssid, passwd))
 
 
 def speak(text):
@@ -21,6 +42,16 @@ def speak(text):
                          stdout=devnull,
                          stderr=devnull,
                          shell=True)
+    devnull.close()
+    return p
+
+import sys
+
+def play_sound(file_path):
+    this_dir = os.path.dirname(sys.argv[0])
+    devnull = open(os.devnull, 'wb')
+    p = subprocess.Popen('aplay %s/wav/%s' % (this_dir, file_path),
+                         stdout=devnull, stderr=devnull, shell=True)
     devnull.close()
     return p
 

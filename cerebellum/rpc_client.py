@@ -5,6 +5,8 @@ from __future__ import print_function
 
 import socket
 import httplib
+import time
+import threading
 import xmlrpclib
 
 class HTTP_with_timeout(httplib.HTTP):
@@ -27,13 +29,28 @@ class CerebrumRpcClient(object):
     
     def __init__(self, uri='http://smilerobotics.com:12346'):
         self._rpc = xmlrpclib.ServerProxy(uri, allow_none=True, transport=TimeoutTransport())
- 
+        self._thread = threading.Thread(target=self.call_rpc_loop)
+        self._thread.setDaemon(True)
+        self._thread.start()
+        self._command = {}
+        self._sensor_data = {}
+
     def get_command(self, sensor_data):
+        self._sensor_data = sensor_data
+        return self._command
+
+    def call_rpc_loop(self):
+        while True:
+            # TODO: need lock?
+            self._command = self.call_rpc()
+            time.sleep(0.01)
+
+    def call_rpc(self):
         try:
-            socket.setdefaulttimeout(0.2)
+            socket.setdefaulttimeout(0.5)
             print('rpc')
-            print(sensor_data)
-            command = self._rpc.get_command(sensor_data)
+            print(self._sensor_data)
+            command = self._rpc.get_command(self._sensor_data)
             print('rpc end')
             socket.setdefaulttimeout(None)
             return command

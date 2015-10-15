@@ -3,6 +3,7 @@
 import sys, codecs
 sys.stdout = codecs.lookup('utf_8')[-1](sys.stdout)
 
+import collections
 import os
 import threading
 import time
@@ -22,7 +23,7 @@ class Cerebellum(object):
         self._sensor = SensorDataCollector(robot_driver=self._robot_driver,
                                            emotion=self._emotion,
                                            cerebrum_getter=CerebrumRpcClient())
-        self._last_sensor_dict = self._sensor.get_sensor_data()
+        self._sensor_history = collections.deque([self._sensor.get_sensor_data()], 100)
         self._vision = vision.VisionSensor()
         self._command = {}
         self._last_speak_pipe = None
@@ -33,7 +34,12 @@ class Cerebellum(object):
                                  'face': 'se_maoudamashii_onepoint28.wav',
                                  'move': 'se_maoudamashii_onepoint24.wav',
                                  'tired': 'se_maoudamashii_chime05.wav',
+                                 'back': 'se_maoudamashii_magical30.wav',
                                  }
+        self._ignoring_time = {'mic': 0}
+
+    def get_last_sensor_dict(self):
+        return self._sensor_history[-1]
 
     def execute(self, command):
         '''
@@ -70,6 +76,8 @@ class Cerebellum(object):
                 self._robot_driver.set_velocity(0, 0)
         if 'velocity' in command:
             self._robot_driver.set_velocity(*command['velocity'])
+        else:
+            self._robot_driver.set_velocity(0)
         if 'emotion' in command:
             # reset all negatives by positive feedback
             if command['emotion'] > 0 and self._emotion.get_balance() < 0:
@@ -114,28 +122,28 @@ class Cerebellum(object):
             command['speak'] = u'楽しくなってきた！'
             command['emotion'] = -2000
             command['dance'] = 1
-        if sensor_dict['emotion'] < -3000:
+#        if sensor_dict['emotion'] < -2000:
 #            command['speak'] = u'なんかつまんないなー'
-            command['sound'] = 'tired'
-            command['emotion'] = 2000
-            command['dance'] = 2
+#            command['sound'] = 'tired'
+#            command['emotion'] = 2000
+#            command['dance'] = 2
 
-        if sensor_dict['is_online'] and not self._last_sensor_dict['is_online']:
+        if sensor_dict['is_online'] and not self.get_last_sensor_dict()['is_online']:
             command['speak'] = u'ネットワークに接続したよ'
-        if not sensor_dict['is_online'] and self._last_sensor_dict['is_online']:
+        if not sensor_dict['is_online'] and self.get_last_sensor_dict()['is_online']:
             command['speak'] = u'ネットワークから切断したみたい'
 
-        if not sensor_dict['is_online'] and 'code' in sensor_dict and sensor_dict['code'] is not None:
+        if not sensor_dict['is_online'] and sensor_dict.get('code'):
             utils.set_wifi_from_string(sensor_dict['code'])
 
         if sensor_dict['oclock_hour'] is not None and (
-            self._last_sensor_dict['oclock_hour'] is None):
+            self.get_last_sensor_dict()['oclock_hour'] is None):
             command['speak'] = u'%d時ちょうどになったね' % sensor_dict['oclock_hour']
             command['sound'] = 'oclock'
             command['dance'] = 1
         def check_hour(i):
             if sensor_dict['from_start_sec'] >= i * 60 * 60 and (
-                self._last_sensor_dict['from_start_sec'] < i * 60 * 60):
+                self.get_last_sensor_dict()['from_start_sec'] < i * 60 * 60):
                 return i
             return None
         for i in range(5):
@@ -149,6 +157,44 @@ class Cerebellum(object):
             command['system'] = 'poweroff'
         if not command:
             command['emotion'] = -10
+
+        if 'mic' in self._ignoring_time and (self._ignoring_time['mic'] < sensor_dict['from_start_sec']):
+            if sensor_dict.get('mic_r') and sensor_dict.get('mic_l'):
+                if sensor_dict.get('mic_r') > 30 and sensor_dict.get('mic_l') > 30:
+                    command['velocity'] = (80, 0)
+                    command['speak'] = u'はいはい'
+                    self._ignoring_time['mic'] = sensor_dict['from_start_sec'] + 2
+                elif sensor_dict.get('mic_r') > 10 and sensor_dict.get('mic_l') > 10:
+                    if sensor_dict.get('mic_r') - 10 > sensor_dict.get('mic_l'):
+                        command['velocity'] = (0, 80)
+                        self._ignoring_time['mic'] = sensor_dict['from_start_sec'] + 2
+                    elif sensor_dict.get('mic_r') < sensor_dict.get('mic_l') - 10:
+                        command['velocity'] = (0, -80)
+                        self._ignoring_time['mic'] = sensor_dict['from_start_sec'] + 2
+        if 'photo_r' in sensor_dict and 'photo_l' in sensor_dict:
+            if sensor_dict['photo_l'] == 1 or sensor_dict['photo_r'] == 1:
+                command['velocity'] = (-90, 0)
+                command['sound'] = 'back'
+
+        if 'velocity' not in command:
+            import random
+            rand = random.random()
+            if sensor_dict['emotion'] < -2000:
+                if rand < 0.1:
+                    command['velocity'] = (80, 0)
+                elif rand < 0.25:
+                    command['velocity'] = (0, 80)
+                elif rand < 0.4:
+                    command['velocity'] = (0, -80)
+            else:
+                if rand < 0.05:
+                    command['velocity'] = (80, 0)
+                elif rand < 0.15:
+                    command['velocity'] = (0, 80)
+                elif rand < 0.25:
+                    command['velocity'] = (0, -80)
+
+
         #
         # overwrite by brain
         #
@@ -157,19 +203,20 @@ class Cerebellum(object):
         if sensor_dict['command_speak']:
             command['speak'] = sensor_dict['command_speak']
 
-        self._last_sensor_dict = sensor_dict
+        self._sensor_history.append(sensor_dict)
         return command
 
 
 def main():
-    utils.play_sound('se_maoudamashii_se_drink02.wav').wait()
-    utils.speak(u'ちびぱいぼっときどうしました！')
+#    utils.play_sound('se_maoudamashii_se_drink02.wav').wait()
+#    utils.speak(u'ちびぱいぼっときどうしました！')
     c = Cerebellum()
     while True:
         sensor = c.get_sensor_data()
         print sensor
+#        print '%03d %03d' % (abs(sensor['mic_l']), abs(sensor['mic_r']))
         command = c.get_command(sensor)
-        print command
+#        print command
         c.execute(command)
         time.sleep(0.1)
 

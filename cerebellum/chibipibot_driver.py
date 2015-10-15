@@ -4,6 +4,7 @@
 import RPi.GPIO as GPIO
 import threading
 import time
+from collections import deque
 
 class PwmMotor:
 
@@ -117,6 +118,19 @@ class SpiDriver(object):
         return value
 
 
+#import numpy as np
+
+class AverageData(object):
+    def __init__(self, size):
+        self._queue = deque(maxlen=size)
+
+    def push(self, data):
+        self._queue.append(data)
+
+    def get_average(self):
+        return sum(self._queue) / float(len(self._queue))
+
+
 class ChibiPiBot(object):
 
     def __init__(self):
@@ -128,6 +142,8 @@ class ChibiPiBot(object):
         self._photo_sensor_r = TouchSensor(6)
         self._mic_sensor_r = TouchSensor(13)
         self._spi = SpiDriver()
+        self._mic_r_queue = AverageData(5)
+        self._mic_l_queue = AverageData(5)
         self._mobile_base = DiffDriveMobileBase(
             PwmWithNotMotor(17, 18), PwmWithNotMotor(22, 27))
         self._thread = threading.Thread(target=self._check_timeout)
@@ -150,13 +166,14 @@ class ChibiPiBot(object):
 
     def get_sensor_data(self):
         '''returns the dictionary which contains sensor data'''
-        
+        self._mic_l_queue.push(abs(2048 - self._spi.read(1)))
+        self._mic_r_queue.push(abs(2048 - self._spi.read(0)))
         return {'touch_l': self._touch_sensor_l.is_touched(),
                 'touch_r': self._touch_sensor_r.is_touched(),
                 'photo_l': self._photo_sensor_l.is_touched(),
                 'photo_r': self._photo_sensor_r.is_touched(),
-                'mic_r': self._spi.read(0),
-                'mic_l': self._spi.read(1),
+                'mic_r': self._mic_r_queue.get_average(),
+                'mic_l': self._mic_l_queue.get_average(),
                 'temperature': self._spi.read(2) * 3.3 / 4096 * 100,
                 }
 

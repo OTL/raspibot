@@ -48,10 +48,10 @@ class CerebrumRpcClient(object):
     def call_rpc(self):
         try:
             socket.setdefaulttimeout(0.5)
-            print('rpc')
-            print(self._sensor_data)
+#            print('rpc')
+#            print(self._sensor_data)
             command = self._rpc.get_command(self._sensor_data)
-            print('rpc end')
+#            print('rpc end')
             socket.setdefaulttimeout(None)
             return command
         except socket.error as e:

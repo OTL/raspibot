@@ -86,7 +86,7 @@ class VisionSensor(object):
         for frame in self._camera.capture_continuous(self._rawCapture,
                                                      format="bgr", use_video_port=True):
             try:
-                print 'cap'
+#                print 'cap'
                 img = frame.array
                 self._rawCapture.truncate(0)
                 if not self._jpeg_sender.send_image(img):

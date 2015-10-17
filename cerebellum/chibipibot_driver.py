@@ -146,14 +146,19 @@ class ChibiPiBot(object):
         self._mic_l_queue = AverageData(5)
         self._mobile_base = DiffDriveMobileBase(
             PwmWithNotMotor(17, 18), PwmWithNotMotor(22, 27))
+        self._is_stopping = False
         self._thread = threading.Thread(target=self._check_timeout)
         self._thread.setDaemon(True)
         self._thread.start()
         self._lock = threading.Lock()
         self._last_updated_time = time.mktime(time.localtime())
 
+    def stop(self):
+        self._is_stopping = True
+        self.set_velocity(0)
+
     def _check_timeout(self):
-        while True:
+        while not self._is_stopping:
             time.sleep(0.1)
             if time.mktime(time.localtime()) - self._last_updated_time > 1.0:
                 with self._lock:

@@ -64,18 +64,44 @@ class Emotion(object):
         self._balance = 0
 
 
+class Health(object):
+
+    def __init__(self, initial_value, max_value, min_value):
+        self._value = initial_value
+        self._max_value = max_value
+        self._min_value = min_value
+        
+    def add(self, value):
+        self.set(self._value + value)
+
+    def get(self):
+        return self._value
+
+    def set(self, value):
+        if value > self._max_value:
+            self._value = self._max_value
+        elif value < self._min_value:
+            self._value = self._min_value
+        else:
+            self._value = value
+
+
 class SensorDataCollector(object):
     
-    def __init__(self, robot_driver, emotion, cerebrum_getter):
+    def __init__(self, robot_driver, emotion, health,
+                 cerebrum_getter, additional_sensor_source=[]):
         self._robot_driver = robot_driver
         self._time_sensor = TimeSensor()
+        self._health = health
         self._online_sensor = OnlineSensor()
         self._emotion = emotion
         self._cerebrum_getter = cerebrum_getter
+        self._additional_sensor_source = additional_sensor_source
 
     def get_sensor_data(self):
         data = {'from_start_sec': self._time_sensor.get_duration_since_start(),
                 'emotion': self._emotion.get_balance(),
+                'health': self._health.get(),
                 'is_online': self._online_sensor.is_online(),
                 'command_velocity': None,
                 'command_speak': None,
@@ -86,6 +112,9 @@ class SensorDataCollector(object):
         if data['is_online']:
             commands = self._cerebrum_getter.get_command(data)
             data.update(commands)
+
+        for s in self._additional_sensor_source:
+            data.update(s.get_sensor_data())
         return data
 
 

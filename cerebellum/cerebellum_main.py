@@ -3,7 +3,6 @@
 import sys, codecs
 sys.stdout = codecs.lookup('utf_8')[-1](sys.stdout)
 
-import collections
 import os
 import random
 import threading
@@ -11,10 +10,12 @@ import time
 
 from rpc_client import CerebrumRpcClient
 from sensors import SensorDataCollector
-from sensors import Emotion
+from sensors import Emotion, Health
 from chibipibot_driver import ChibiPiBot
 import utils
 import vision
+import brain
+
 
 def touch_motion(sensor_dict, command, history, ignoring_time):
     if sensor_dict['touch_l'] and sensor_dict['touch_r']:
@@ -70,12 +71,23 @@ def shutdown_by_vision(sensor_dict, command, history, ignoring_time):
         command['speak'] = u'電源を切ります'
         command['system'] = 'poweroff'
 
+
 def deal_emotion(sensor_dict, command, history, ignoring_time):
     if not command:
         command['emotion'] = -10
 
+def deal_health(sensor_dict, command, history, ignoring_time):
+    TIRED_HEALTH=-5000
+    if sensor_dict['health'] < TIRED_HEALTH and history[-1]['health'] >= TIRED_HEALTH:
+        command['speak'] = u'疲れてきちゃった'
+        # tired more, to avoid chattering
+        command['health'] = -1000
+
+
 def listen_sound(sensor_dict, command, history, ignoring_time):
-    if 'mic' in ignoring_time and (ignoring_time['mic'] < sensor_dict['from_start_sec']):
+    if 'mic' not in ignoring_time:
+        ignoring_time['mic'] = sensor_dict['from_start_sec']
+    if ignoring_time['mic'] < sensor_dict['from_start_sec']:
         if sensor_dict.get('mic_r') and sensor_dict.get('mic_l'):
             if sensor_dict.get('mic_r') > 30 and sensor_dict.get('mic_l') > 30:
                 command['velocity'] = (80, 0)
@@ -88,6 +100,7 @@ def listen_sound(sensor_dict, command, history, ignoring_time):
                 elif sensor_dict.get('mic_r') < sensor_dict.get('mic_l') - 10:
                     command['velocity'] = (0, -80)
                     ignoring_time['mic'] = sensor_dict['from_start_sec'] + 2
+
 
 def check_ground(sensor_dict, command, history, ignoring_time):
     if 'photo_r' in sensor_dict and 'photo_l' in sensor_dict:
@@ -105,23 +118,23 @@ def check_ground(sensor_dict, command, history, ignoring_time):
             command['dance'] = 6
             command['sound'] = 'back'
 
+
 def random_motion(sensor_dict, command, history, ignoring_time):
     if 'velocity' not in command:
         rand = random.random()
+        rate = 0.05
         if sensor_dict['emotion'] < -2000:
-            if rand < 0.1:
-                command['velocity'] = (80, 0)
-            elif rand < 0.25:
-                command['velocity'] = (0, 80)
-            elif rand < 0.4:
-                command['velocity'] = (0, -80)
-        else:
-            if rand < 0.05:
-                command['velocity'] = (80, 0)
-            elif rand < 0.15:
-                command['velocity'] = (0, 80)
-            elif rand < 0.25:
-                command['velocity'] = (0, -80)
+            rate *= 2.0
+        if sensor_dict['health'] < -5000:
+            rate *= 0.1
+        elif sensor_dict['health'] < -3000:
+            rate *= 0.5
+        if rand < rate:
+            command['velocity'] = (80, 0)
+        elif rand < rate * 2.5:
+            command['velocity'] = (0, 80)
+        elif rand < rate * 4.0:
+            command['velocity'] = (0, -80)
 
 def overwrite_direct_command(sensor_dict, command, history, ignoring_time):
     if sensor_dict['command_velocity']:
@@ -130,129 +143,143 @@ def overwrite_direct_command(sensor_dict, command, history, ignoring_time):
         command['speak'] = sensor_dict['command_speak']
 
 
-class Cerebellum(object):
+def stopper(sensor_dict, command, history, ignoring_time):
+    if 'velocity' not in command:
+        command['velocity'] = (0.0, 0.0)
 
-    def __init__(self):
-        self._emotion = Emotion()
-        self._robot_driver = ChibiPiBot()
-        self._sensor = SensorDataCollector(robot_driver=self._robot_driver,
-                                           emotion=self._emotion,
-                                           cerebrum_getter=CerebrumRpcClient())
-        self._sensor_history = collections.deque([self._sensor.get_sensor_data()], 100)
-        self._vision = vision.VisionSensor()
-        self._command = {}
-        self._last_speak_pipe = None
-        self._vision_thread = threading.Thread(target=self._vision.main)
-        self._vision_thread.setDaemon(True)
-        self._vision_thread.start()
+
+### drivers
+def system_command(system_command):
+    if system_command == 'poweroff':
+        self._robot_driver.set_velocity(0, 0)
+        os.system('poweroff')
+
+
+class CommandDriver(object):
+    def __init__(self, driver, emotion, health):
+        self._robot_driver = driver
+        self._emotion = emotion
+        self._health = health
         self._sound_file_dict = {'oclock': 'se_maoudamashii_chime05.wav',
                                  'face': 'se_maoudamashii_onepoint28.wav',
                                  'move': 'se_maoudamashii_onepoint24.wav',
                                  'tired': 'se_maoudamashii_chime05.wav',
                                  'back': 'se_maoudamashii_magical30.wav',
                                  }
-        self._applications = [touch_motion, emotional_motion, show_network, connect_network_by_code, speak_time, 
-                              shutdown_by_vision, deal_emotion, listen_sound, check_ground,  random_motion,
-                              overwrite_direct_command]
-        self._ignoring_time = {'mic': 0}
+        self._last_speak_pipe = None
 
-    def get_last_sensor_dict(self):
-        return self._sensor_history[-1]
+    def play_sound(self, sound_id):
+        if sound_id in self._sound_file_dict:
+            utils.play_sound(self._sound_file_dict[sound_id])
 
-    def execute(self, command):
-        '''
-        dance, velocity, speak, emotion
-        '''
-        if 'sound' in command:
-            if command['sound'] in self._sound_file_dict:
-                utils.play_sound(self._sound_file_dict[command['sound']])
-        if 'speak' in command:
-            if self._last_speak_pipe:
-                self._last_speak_pipe.wait()
-            self._last_speak_pipe = utils.speak(command['speak'])
+    def speak(self, speak_command):
+        if self._last_speak_pipe:
+            self._last_speak_pipe.wait()
+        self._last_speak_pipe = utils.speak(speak_command)
 
-        if 'dance' in command:
-            if command['dance'] == 1:
-                self._robot_driver.set_velocity(100, 0)
-                time.sleep(1)
-                self._robot_driver.set_velocity(-100, 0)
-                time.sleep(1)
-                self._robot_driver.set_velocity(0, 0)
-            if command['dance'] == 2:
-                self._robot_driver.set_velocity(0, 100)
-                time.sleep(1)
-                self._robot_driver.set_velocity(0, -100)
-                time.sleep(1)
-                self._robot_driver.set_velocity(0, 0)
-            if command['dance'] == 3:
-                self._robot_driver.set_velocity(0, 100)
-                time.sleep(0.2)
-                self._robot_driver.set_velocity(0, 0)
-            if command['dance'] == 4:
-                self._robot_driver.set_velocity(0, -100)
-                time.sleep(0.2)
-                self._robot_driver.set_velocity(0, 0)
-            if command['dance'] == 5:
-                self._robot_driver.set_velocity(-100, 0)
-                time.sleep(1.0)
-                self._robot_driver.set_velocity(0, -100)
-                time.sleep(0.5)
-            if command['dance'] == 6:
-                self._robot_driver.set_velocity(-100, 0)
-                time.sleep(1.0)
-                self._robot_driver.set_velocity(0, 100)
-                time.sleep(0.5)
+    def dance(self, dance_id):
+        if dance_id == 1:
+            self._robot_driver.set_velocity(100, 0)
+            time.sleep(1)
+            self._robot_driver.set_velocity(-100, 0)
+            time.sleep(1)
+            self._robot_driver.set_velocity(0, 0)
+        if dance_id == 2:
+            self._robot_driver.set_velocity(0, 100)
+            time.sleep(1)
+            self._robot_driver.set_velocity(0, -100)
+            time.sleep(1)
+            self._robot_driver.set_velocity(0, 0)
+        if dance_id == 3:
+            self._robot_driver.set_velocity(0, 100)
+            time.sleep(0.2)
+            self._robot_driver.set_velocity(0, 0)
+        if dance_id == 4:
+            self._robot_driver.set_velocity(0, -100)
+            time.sleep(0.2)
+            self._robot_driver.set_velocity(0, 0)
+        if dance_id == 5:
+            self._robot_driver.set_velocity(-100, 0)
+            time.sleep(1.0)
+            self._robot_driver.set_velocity(0, -100)
+            time.sleep(0.5)
+        if dance_id == 6:
+            self._robot_driver.set_velocity(-100, 0)
+            time.sleep(1.0)
+            self._robot_driver.set_velocity(0, 100)
+            time.sleep(0.5)
 
-        if 'velocity' in command:
-            self._robot_driver.set_velocity(*command['velocity'])
+    def move_by_velocity(self, vel_command):
+        self._robot_driver.set_velocity(*vel_command)
+
+    def tired_by_velocity(self, vel_command):
+        vel = abs(vel_command[0]) + abs(vel_command[1])
+        if vel < 50:
+            self._health.add(10)
         else:
-            self._robot_driver.set_velocity(0)
-        if 'emotion' in command:
-            # reset all negatives by positive feedback
-            if command['emotion'] > 0 and self._emotion.get_balance() < 0:
-                self._emotion.reset()
-            self._emotion.add_positive(command['emotion'])
-        if 'system' in command:
-            if command['system'] == 'poweroff':
-                self._robot_driver.set_velocity(0, 0)
-                os.system('poweroff')
+            self._health.add(-abs(vel_command[0]) - abs(vel_command[1]))
 
-    def get_sensor_data(self):
-        sensor_dict = self._sensor.get_sensor_data()
-        sensor_dict.update(self._vision.get_sensor_data())
-        return sensor_dict
+    def deal_emotion(self, emotion_value):
+        # reset all negatives by positive feedback
+        if emotion_value > 0 and self._emotion.get_balance() < 0:
+            self._emotion.reset()
+        self._emotion.add_positive(emotion_value)
 
-    def get_command(self, sensor_dict):
-        '''
-        touch_l, touch_r, command_velocity, command_speak, from_start_sec,
-        emotion, is_online, oclock_hour
-        '''
-        #
-        # Use cerebrum commands
-        #
-        command = {}
-        #
-        # Use cerebellum
-        #
-        for app in self._applications:
-            app(sensor_dict, command, self._sensor_history, self._ignoring_time)
+    def deal_health(self, health_value):
+        self._health.add(health_value)
 
-        self._sensor_history.append(sensor_dict)
-        return command
+
+class ChibiPiBotCerebellum(object):
+    def __init__(self):
+        self._robot_driver = ChibiPiBot()
+        self._emotion = Emotion()
+        self._health = Health(0, 0, -10000)
+        self._vision = vision.VisionSensor()
+        self._rpc_client = CerebrumRpcClient()
+        self._sensor = SensorDataCollector(robot_driver=self._robot_driver,
+                                           emotion=self._emotion,
+                                           health=self._health,
+                                           cerebrum_getter=self._rpc_client,
+                                           additional_sensor_source=[self._vision])
+        self._vision_thread = threading.Thread(target=self._vision.main)
+        self._vision_thread.setDaemon(True)
+        self._vision_thread.start()
+
+        self._command_driver = CommandDriver(self._robot_driver, self._emotion,
+                                             self._health)
+        self._cerebellum = brain.Cerebellum(self._sensor,
+                                      {'sound': [self._command_driver.play_sound],
+                                       'speak': [self._command_driver.speak],
+                                       'dance': [self._command_driver.dance],
+                                       'velocity': [self._command_driver.move_by_velocity,
+                                                    self._command_driver.tired_by_velocity,
+                                                    ],
+                                       'emotion': [self._command_driver.deal_emotion],
+                                       'health': [self._command_driver.deal_health],
+                                       },
+                                      [touch_motion, emotional_motion, show_network, connect_network_by_code, speak_time, 
+                                       shutdown_by_vision, deal_emotion, deal_health, listen_sound, check_ground,  random_motion,
+                                       overwrite_direct_command, stopper])
+
+    def get_sensor_and_execute(self):
+        self._cerebellum.get_sensor_and_execute()
+
+    def close(self):
+        self._vision.stop()
+        self._rpc_client.stop()
+        self._robot_driver.stop()
 
 
 def main():
 #    utils.play_sound('se_maoudamashii_se_drink02.wav').wait()
 #    utils.speak(u'ちびぱいぼっときどうしました！')
-    c = Cerebellum()
-    while True:
-        sensor = c.get_sensor_data()
-        print sensor
-#        print '%03d %03d' % (abs(sensor['mic_l']), abs(sensor['mic_r']))
-        command = c.get_command(sensor)
-#        print command
-        c.execute(command)
-        time.sleep(0.1)
+    c = ChibiPiBotCerebellum()
+    try:
+        while True:
+            c.get_sensor_and_execute()
+            time.sleep(0.1)
+    except KeyboardInterrupt:
+        c.close()
 
 if __name__ == '__main__':
     main()

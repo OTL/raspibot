@@ -1,6 +1,7 @@
 from picamera.array import PiRGBArray
 from picamera import PiCamera
 
+import exceptions
 import threading
 import time
 import cv2
@@ -81,10 +82,16 @@ class VisionSensor(object):
         self._code_reader = CodeReader()
         self._sensor_data = {'darkness': False}
         self._lock = threading.Lock()
+        self._is_stopping = False
+
+    def stop(self):
+        self._is_stopping = True
 
     def main(self):
         for frame in self._camera.capture_continuous(self._rawCapture,
                                                      format="bgr", use_video_port=True):
+            if self._is_stopping:
+                break
             try:
 #                print 'cap'
                 img = frame.array
@@ -96,7 +103,7 @@ class VisionSensor(object):
                     self._sensor_data['darkness'] = self._darkness_recognizer.is_dark(img)
                     self._sensor_data['code'] = self._code_reader.decode(img)
                 time.sleep(0.01)
-            except KeyboardInterrupt:
+            except KeyboardInterrupt, exceptions.AttributeError:
                 self._jpeg_sender.close()
                 break
 

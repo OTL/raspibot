@@ -34,13 +34,17 @@ class CerebrumRpcClient(object):
         self._thread.start()
         self._command = {}
         self._sensor_data = {}
+        self._is_stopping = False
 
     def get_command(self, sensor_data):
         self._sensor_data = sensor_data
         return self._command
 
+    def stop(self):
+        self._is_stopping = True
+
     def call_rpc_loop(self):
-        while True:
+        while not self._is_stopping:
             # TODO: need lock?
             self._command = self.call_rpc()
             time.sleep(0.01)

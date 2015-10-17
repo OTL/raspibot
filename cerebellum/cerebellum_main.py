@@ -5,6 +5,7 @@ sys.stdout = codecs.lookup('utf_8')[-1](sys.stdout)
 
 import collections
 import os
+import random
 import threading
 import time
 
@@ -14,6 +15,120 @@ from sensors import Emotion
 from chibipibot_driver import ChibiPiBot
 import utils
 import vision
+
+def touch_motion(sensor_dict, command, history, ignoring_time):
+    if sensor_dict['touch_l'] and sensor_dict['touch_r']:
+        command['speak'] = u'おさないでー'
+        command['velocity'] = (-100, 0)
+        command['emotion'] = -1000
+    elif sensor_dict['touch_l']:
+        command['dance'] = 3
+#            command['speak'] = u'左へ曲がるよ'
+        command['sound'] = 'move'
+        command['emotion'] = 500
+    elif sensor_dict['touch_r']:
+        command['dance'] = 4
+        command['sound'] = 'move'
+        command['emotion'] = 500
+
+def emotional_motion(sensor_dict, command, history, ignoring_time):
+    if sensor_dict['emotion'] > 3000:
+        command['speak'] = u'楽しくなってきた！'
+        command['emotion'] = -2000
+        command['dance'] = 1
+
+def show_network(sensor_dict, command, history, ignoring_time):
+    if sensor_dict['is_online'] and not history[-1]['is_online']:
+        command['speak'] = u'ネットワークに接続したよ'
+    if not sensor_dict['is_online'] and history[-1]['is_online']:
+        command['speak'] = u'ネットワークから切断したみたい'
+
+def connect_network_by_code(sensor_dict, command, history, ignoring_time):
+    if not sensor_dict['is_online'] and sensor_dict.get('code'):
+        utils.set_wifi_from_string(sensor_dict['code'])
+
+def speak_time(sensor_dict, command, history, ignoring_time):
+    if sensor_dict['oclock_hour'] is not None and (
+        history[-1]['oclock_hour'] is None):
+        command['speak'] = u'%d時ちょうどになったね' % sensor_dict['oclock_hour']
+        command['sound'] = 'oclock'
+        command['dance'] = 1
+    def check_hour(i):
+        if sensor_dict['from_start_sec'] >= i * 60 * 60 and (
+            history[-1]['from_start_sec'] < i * 60 * 60):
+            return i
+        return None
+    for i in range(5):
+        hour = check_hour(i)
+        if hour:
+            command['speak'] = u'動き出して%d時間たったよ' % hour
+            command['dance'] = 1
+
+
+def shutdown_by_vision(sensor_dict, command, history, ignoring_time):
+    if sensor_dict['darkness'] and sensor_dict['touch_l'] and sensor_dict['touch_r']:
+        command['speak'] = u'電源を切ります'
+        command['system'] = 'poweroff'
+
+def deal_emotion(sensor_dict, command, history, ignoring_time):
+    if not command:
+        command['emotion'] = -10
+
+def listen_sound(sensor_dict, command, history, ignoring_time):
+    if 'mic' in ignoring_time and (ignoring_time['mic'] < sensor_dict['from_start_sec']):
+        if sensor_dict.get('mic_r') and sensor_dict.get('mic_l'):
+            if sensor_dict.get('mic_r') > 30 and sensor_dict.get('mic_l') > 30:
+                command['velocity'] = (80, 0)
+                command['speak'] = u'はいはい'
+                ignoring_time['mic'] = sensor_dict['from_start_sec'] + 2
+            elif sensor_dict.get('mic_r') > 10 and sensor_dict.get('mic_l') > 10:
+                if sensor_dict.get('mic_r') - 10 > sensor_dict.get('mic_l'):
+                    command['velocity'] = (0, 80)
+                    ignoring_time['mic'] = sensor_dict['from_start_sec'] + 2
+                elif sensor_dict.get('mic_r') < sensor_dict.get('mic_l') - 10:
+                    command['velocity'] = (0, -80)
+                    ignoring_time['mic'] = sensor_dict['from_start_sec'] + 2
+
+def check_ground(sensor_dict, command, history, ignoring_time):
+    if 'photo_r' in sensor_dict and 'photo_l' in sensor_dict:
+        if sensor_dict['photo_l'] == 1 and sensor_dict['photo_r'] == 1:
+            rand = random.random()
+            if rand < 0.5:
+                command['dance'] = 5
+            else:
+                command['dance'] = 6
+            command['sound'] = 'back'
+        elif sensor_dict['photo_l'] == 1:
+            command['dance'] = 5
+            command['sound'] = 'back'
+        elif sensor_dict['photo_l'] == 1:
+            command['dance'] = 6
+            command['sound'] = 'back'
+
+def random_motion(sensor_dict, command, history, ignoring_time):
+    if 'velocity' not in command:
+        rand = random.random()
+        if sensor_dict['emotion'] < -2000:
+            if rand < 0.1:
+                command['velocity'] = (80, 0)
+            elif rand < 0.25:
+                command['velocity'] = (0, 80)
+            elif rand < 0.4:
+                command['velocity'] = (0, -80)
+        else:
+            if rand < 0.05:
+                command['velocity'] = (80, 0)
+            elif rand < 0.15:
+                command['velocity'] = (0, 80)
+            elif rand < 0.25:
+                command['velocity'] = (0, -80)
+
+def overwrite_direct_command(sensor_dict, command, history, ignoring_time):
+    if sensor_dict['command_velocity']:
+        command['velocity'] = sensor_dict['command_velocity']
+    if sensor_dict['command_speak']:
+        command['speak'] = sensor_dict['command_speak']
+
 
 class Cerebellum(object):
 
@@ -36,6 +151,9 @@ class Cerebellum(object):
                                  'tired': 'se_maoudamashii_chime05.wav',
                                  'back': 'se_maoudamashii_magical30.wav',
                                  }
+        self._applications = [touch_motion, emotional_motion, show_network, connect_network_by_code, speak_time, 
+                              shutdown_by_vision, deal_emotion, listen_sound, check_ground,  random_motion,
+                              overwrite_direct_command]
         self._ignoring_time = {'mic': 0}
 
     def get_last_sensor_dict(self):
@@ -74,6 +192,17 @@ class Cerebellum(object):
                 self._robot_driver.set_velocity(0, -100)
                 time.sleep(0.2)
                 self._robot_driver.set_velocity(0, 0)
+            if command['dance'] == 5:
+                self._robot_driver.set_velocity(-100, 0)
+                time.sleep(1.0)
+                self._robot_driver.set_velocity(0, -100)
+                time.sleep(0.5)
+            if command['dance'] == 6:
+                self._robot_driver.set_velocity(-100, 0)
+                time.sleep(1.0)
+                self._robot_driver.set_velocity(0, 100)
+                time.sleep(0.5)
+
         if 'velocity' in command:
             self._robot_driver.set_velocity(*command['velocity'])
         else:
@@ -105,103 +234,8 @@ class Cerebellum(object):
         #
         # Use cerebellum
         #
-        if sensor_dict['touch_l'] and sensor_dict['touch_r']:
-            command['speak'] = u'おさないでー'
-            command['velocity'] = (-100, 0)
-            command['emotion'] = -1000
-        elif sensor_dict['touch_l']:
-            command['dance'] = 3
-#            command['speak'] = u'左へ曲がるよ'
-            command['sound'] = 'move'
-            command['emotion'] = 500
-        elif sensor_dict['touch_r']:
-            command['dance'] = 4
-            command['sound'] = 'move'
-            command['emotion'] = 500
-        if sensor_dict['emotion'] > 3000:
-            command['speak'] = u'楽しくなってきた！'
-            command['emotion'] = -2000
-            command['dance'] = 1
-#        if sensor_dict['emotion'] < -2000:
-#            command['speak'] = u'なんかつまんないなー'
-#            command['sound'] = 'tired'
-#            command['emotion'] = 2000
-#            command['dance'] = 2
-
-        if sensor_dict['is_online'] and not self.get_last_sensor_dict()['is_online']:
-            command['speak'] = u'ネットワークに接続したよ'
-        if not sensor_dict['is_online'] and self.get_last_sensor_dict()['is_online']:
-            command['speak'] = u'ネットワークから切断したみたい'
-
-        if not sensor_dict['is_online'] and sensor_dict.get('code'):
-            utils.set_wifi_from_string(sensor_dict['code'])
-
-        if sensor_dict['oclock_hour'] is not None and (
-            self.get_last_sensor_dict()['oclock_hour'] is None):
-            command['speak'] = u'%d時ちょうどになったね' % sensor_dict['oclock_hour']
-            command['sound'] = 'oclock'
-            command['dance'] = 1
-        def check_hour(i):
-            if sensor_dict['from_start_sec'] >= i * 60 * 60 and (
-                self.get_last_sensor_dict()['from_start_sec'] < i * 60 * 60):
-                return i
-            return None
-        for i in range(5):
-            hour = check_hour(i)
-            if hour:
-                command['speak'] = u'動き出して%d時間たったよ' % hour
-                command['dance'] = 1
-
-        if sensor_dict['darkness'] and sensor_dict['touch_l'] and sensor_dict['touch_r']:
-            command['speak'] = u'電源を切ります'
-            command['system'] = 'poweroff'
-        if not command:
-            command['emotion'] = -10
-
-        if 'mic' in self._ignoring_time and (self._ignoring_time['mic'] < sensor_dict['from_start_sec']):
-            if sensor_dict.get('mic_r') and sensor_dict.get('mic_l'):
-                if sensor_dict.get('mic_r') > 30 and sensor_dict.get('mic_l') > 30:
-                    command['velocity'] = (80, 0)
-                    command['speak'] = u'はいはい'
-                    self._ignoring_time['mic'] = sensor_dict['from_start_sec'] + 2
-                elif sensor_dict.get('mic_r') > 10 and sensor_dict.get('mic_l') > 10:
-                    if sensor_dict.get('mic_r') - 10 > sensor_dict.get('mic_l'):
-                        command['velocity'] = (0, 80)
-                        self._ignoring_time['mic'] = sensor_dict['from_start_sec'] + 2
-                    elif sensor_dict.get('mic_r') < sensor_dict.get('mic_l') - 10:
-                        command['velocity'] = (0, -80)
-                        self._ignoring_time['mic'] = sensor_dict['from_start_sec'] + 2
-        if 'photo_r' in sensor_dict and 'photo_l' in sensor_dict:
-            if sensor_dict['photo_l'] == 1 or sensor_dict['photo_r'] == 1:
-                command['velocity'] = (-90, 0)
-                command['sound'] = 'back'
-
-        if 'velocity' not in command:
-            import random
-            rand = random.random()
-            if sensor_dict['emotion'] < -2000:
-                if rand < 0.1:
-                    command['velocity'] = (80, 0)
-                elif rand < 0.25:
-                    command['velocity'] = (0, 80)
-                elif rand < 0.4:
-                    command['velocity'] = (0, -80)
-            else:
-                if rand < 0.05:
-                    command['velocity'] = (80, 0)
-                elif rand < 0.15:
-                    command['velocity'] = (0, 80)
-                elif rand < 0.25:
-                    command['velocity'] = (0, -80)
-
-
-        #
-        # overwrite by brain
-        #
-        if sensor_dict['command_velocity']:
-            command['velocity'] = sensor_dict['command_velocity']
-        if sensor_dict['command_speak']:
-            command['speak'] = sensor_dict['command_speak']
+        for app in self._applications:
+            app(sensor_dict, command, self._sensor_history, self._ignoring_time)
 
         self._sensor_history.append(sensor_dict)
         return command

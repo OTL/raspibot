@@ -179,7 +179,7 @@ class ChibiPiBot(object):
                 'photo_r': self._photo_sensor_r.is_touched(),
                 'mic_r': self._mic_r_queue.get_average(),
                 'mic_l': self._mic_l_queue.get_average(),
-                'temperature': self._spi.read(2) * 3.3 / 4096 * 100,
+#                'temperature': self._spi.read(2) * 3.3 / 4096 * 100,
                 }
 
 

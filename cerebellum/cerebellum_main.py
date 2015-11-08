@@ -103,6 +103,12 @@ def listen_sound(sensor_dict, command, history, ignoring_time):
 
 
 def check_ground(sensor_dict, command, history, ignoring_time):
+    if not sensor_dict['on_flat_ground'] and history[-1]['on_flat_ground']:
+        command['speak'] = u'うわあ'
+    if sensor_dict['on_flat_ground'] and not history[-1]['on_flat_ground']:
+        command['speak'] = u'ふぅ'
+    if abs(sensor_dict['rotation'][0]) > 0.3 or abs(sensor_dict['rotation'][1]) > 0.3:
+        return
     if 'photo_r' in sensor_dict and 'photo_l' in sensor_dict:
         if sensor_dict['photo_l'] == 1 and sensor_dict['photo_r'] == 1:
             rand = random.random()
@@ -120,6 +126,9 @@ def check_ground(sensor_dict, command, history, ignoring_time):
 
 
 def random_motion(sensor_dict, command, history, ignoring_time):
+    if not sensor_dict['on_flat_ground']:
+        return
+
     if 'velocity' not in command:
         rand = random.random()
         rate = 0.05

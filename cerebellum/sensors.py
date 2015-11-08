@@ -1,10 +1,14 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+import collections
 import os
 import time
 import subprocess
 import threading
+from mpu_6050 import Mpu6050Reader
+from imu import get_rotation
+
 
 class TimeSensor(object):
     
@@ -97,6 +101,8 @@ class SensorDataCollector(object):
         self._emotion = emotion
         self._cerebrum_getter = cerebrum_getter
         self._additional_sensor_source = additional_sensor_source
+        self._imu = Mpu6050Reader()
+        self._history = collections.deque(maxlen=10)
 
     def get_sensor_data(self):
         data = {'from_start_sec': self._time_sensor.get_duration_since_start(),
@@ -105,7 +111,8 @@ class SensorDataCollector(object):
                 'is_online': self._online_sensor.is_online(),
                 'command_velocity': None,
                 'command_speak': None,
-                'oclock_hour': None}
+                'oclock_hour': None,
+                'rotation': (0.0, 0.0)}
         if self._time_sensor.is_oclock_min():
             data['oclock_hour'] = self._time_sensor.get_current_time().tm_hour
         data.update(self._robot_driver.get_sensor_data())
@@ -113,8 +120,22 @@ class SensorDataCollector(object):
             commands = self._cerebrum_getter.get_command(data)
             data.update(commands)
 
+        data['rotation'] = get_rotation(*self._imu.get_acceleration())
+        data['acceleration'] = self._imu.get_acceleration()
+        data['angular_velocity'] = self._imu.get_angular_velocity()
+        data['templerature'] = self._imu.get_temperature()
+
+        def check_flat(rot):
+            return abs(rot[0]) < 0.3 and abs(rot[1]) < 0.3
+        average_rot = [0.0, 0.0]
+        for s in list(self._history):
+            average_rot[0] += s['rotation'][0] / len(self._history)
+            average_rot[1] += s['rotation'][1] / len(self._history)
+        data['average_rotation'] = average_rot
+        data['on_flat_ground'] = check_flat(data['average_rotation'])
         for s in self._additional_sensor_source:
             data.update(s.get_sensor_data())
+        self._history.append(data)
         return data
 
 

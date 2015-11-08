@@ -37,14 +37,16 @@ class Cerebellum(object):
 
     def get_command(self, sensor_dict):
         command = {}
+        history_list = list(self._sensor_history)
         for app in self._applications:
-            app(sensor_dict, command, self._sensor_history, self._ignoring_time)
+            app(sensor_dict, command, history_list, self._ignoring_time)
 
         self._sensor_history.append(sensor_dict)
         return command
 
     def get_sensor_and_execute(self):
         sensor = self.get_sensor_data()
-        print sensor
+        print sensor['on_flat_ground']
+        print sensor['average_rotation']
         command = self.get_command(sensor)
         self.execute(command)

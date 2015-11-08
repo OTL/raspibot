@@ -4,12 +4,12 @@
 # from
 # https://gist.githubusercontent.com/wide-snow/1149b0b29064fc1208fa/raw/c425da2ab02f7cbdad4b393c79e0a1d948274d0f/mpu-6050_2.py
 
-import smbus
+from imu import ImuReader
+from imu import get_rotation
 import math
-import time
+import smbus
 
-
-class Mpu6050Reader(object):
+class Mpu6050Reader(ImuReader):
     DEV_ADDR = 0x68
     ACCEL_XOUT = 0x3b
     ACCEL_YOUT = 0x3d
@@ -46,9 +46,7 @@ class Mpu6050Reader(object):
             return val
 
     def get_temperature(self):
-        temp = self._read_word_sensor(self.TEMP_OUT)
-        x = temp / 340 + 36.53
-        return x
+        return self._read_word_sensor(self.TEMP_OUT) / 340 + 36.53
 
 #
 # Angular Velocity: full scale range ±250 deg/s
@@ -63,8 +61,8 @@ class Mpu6050Reader(object):
         z = self._read_word_sensor(self.GYRO_ZOUT)
         return (x, y, z)
 
-    def get_gyro_data_deg(self):
-        return tuple([x / 131.0 for x in self.get_gyro_data_lsb()])
+    def get_angular_velocity(self):
+        return tuple([math.radians(x / 131.0) for x in self.get_gyro_data_lsb()])
 
 #
 # Acceleration: full scale range ±2g
@@ -79,27 +77,19 @@ class Mpu6050Reader(object):
         z = self._read_word_sensor(self.ACCEL_ZOUT)
         return (x, y, z)
 
-    def get_accel_data_g(self):
-        return tuple([x / 16384.0 for x in self.get_accel_data_lsb()])
-
-
-def dist(a, b):
-    return math.sqrt((a * a) + (b * b))
-
-
-def get_rotation(acc_x, acc_y, acc_z):
-    return (math.atan2(acc_y, dist(acc_x, acc_z)), -math.atan2(acc_x, dist(acc_y, acc_z)))
+    def get_acceleration(self):
+        return tuple([x / 16384.0 * 9.81 for x in self.get_accel_data_lsb()])
 
 
 def main():
-    # 温度.
+    import time
     imu = Mpu6050Reader()
     try:
         while True:
             print 'temperature[C]: %04.1f ||' % imu.get_temperature(),
-            print 'gyro[deg/s] x: %08.3f y: %08.3f z: %08.3f' % imu.get_gyro_data_deg(),
-            print 'accel[g] x: %06.3f y: %06.3f z: %06.3f' % imu.get_accel_data_g(),
-            print 'rotation[rad] x: %06.3f y: %06.3f' % get_rotation(*imu.get_accel_data_g())
+            print 'gyro[deg/s] x: %08.3f y: %08.3f z: %08.3f' % imu.get_angular_velocity(),
+            print 'accel[g] x: %06.3f y: %06.3f z: %06.3f' % imu.get_acceleration(),
+            print 'rotation[rad] x: %06.3f y: %06.3f' % get_rotation(*imu.get_acceleration())
             time.sleep(0.1)
     except KeyboardInterrupt as e:
         print e

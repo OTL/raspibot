@@ -75,5 +75,7 @@ def get_weather_temperature():
     #weather_desc = json_weather['weather'][0]['description']
     return (max_temp, min_temp)
 
-#speach('IPアドレスは%s' % get_ip_address_string()).wait()
-#speach('最高気温は%d度 最低気温は%d度です' % get_weather()).wait()
+if __name__ == '__main__':
+    speak('こんにちわ').wait()
+    speak('IPアドレスは%s' % get_ip_address_string()).wait()
+

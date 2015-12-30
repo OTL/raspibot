@@ -93,7 +93,7 @@ class VisionSensor(object):
             if self._is_stopping:
                 break
             try:
-#                print 'cap'
+                print 'cap'
                 img = frame.array
                 self._rawCapture.truncate(0)
                 if not self._jpeg_sender.send_image(img):
@@ -113,4 +113,5 @@ class VisionSensor(object):
 
 
 if __name__ == '__main__':
-    main()
+    v = VisionSensor()
+    v.main()

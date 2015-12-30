@@ -138,9 +138,6 @@ class ChibiPiBot(object):
         GPIO.setmode(GPIO.BCM)
         self._touch_sensor_l = TouchSensor(19)
         self._touch_sensor_r = TouchSensor(20)
-        self._photo_sensor_l = TouchSensor(5)
-        self._photo_sensor_r = TouchSensor(6)
-        self._mic_sensor_r = TouchSensor(13)
         self._spi = SpiDriver()
         self._mic_r_queue = AverageData(5)
         self._mic_l_queue = AverageData(5)
@@ -173,23 +170,86 @@ class ChibiPiBot(object):
         '''returns the dictionary which contains sensor data'''
         self._mic_l_queue.push(abs(2048 - self._spi.read(1)))
         self._mic_r_queue.push(abs(2048 - self._spi.read(0)))
+        photo_l = self._spi.read(2)
+        photo_r = self._spi.read(3)
         return {'touch_l': self._touch_sensor_l.is_touched(),
                 'touch_r': self._touch_sensor_r.is_touched(),
-                'photo_l': self._photo_sensor_l.is_touched(),
-                'photo_r': self._photo_sensor_r.is_touched(),
+                'photo_l': photo_l,
+                'photo_r': photo_r,
                 'mic_r': self._mic_r_queue.get_average(),
                 'mic_l': self._mic_l_queue.get_average(),
 #                'temperature': self._spi.read(2) * 3.3 / 4096 * 100,
+                'v_charge': self._spi.read(4) * 2.0 * 3.3 / 4096.0,
+#                'v_in': self._spi.read(4) * 2.0 * 3.3 / 4096.0,
                 }
 
+import colorsys
 
-if __name__ == '__main__':
-    c = ChibiPiBot()
+class PwmRGB(object):
+    def __init__(self, pin_r, pin_g, pin_b, pwm_hz=50):
+        GPIO.setup(pin_r, GPIO.OUT)
+        GPIO.setup(pin_g, GPIO.OUT)
+        GPIO.setup(pin_b, GPIO.OUT)
+        self._pwm_r = GPIO.PWM(pin_r, pwm_hz)
+        self._pwm_g = GPIO.PWM(pin_g, pwm_hz)
+        self._pwm_b = GPIO.PWM(pin_b, pwm_hz)
+        for pwm in [self._pwm_r, self._pwm_g, self._pwm_b]:
+            pwm.start(0)
+
+    def set_rgb(self, percent_r, percent_g, percent_b):
+        self._pwm_r.ChangeDutyCycle(percent_r)
+        self._pwm_g.ChangeDutyCycle(percent_g)
+        self._pwm_b.ChangeDutyCycle(percent_b)
+
+    def set_hsv(self, percent_h,  percent_s,  percent_v):
+        r, g, b = colorsys.hsv_to_rgb(percent_h * 0.01, percent_s * 0.01, percent_v * 0.01)
+        self.set_rgb(r * 100, g * 100, b * 100)
+
+
+def test_led():
+    GPIO.setmode(GPIO.BCM)
+    led = PwmRGB(6, 12, 5)
+    i = 0
+    import math
     while True:
-        print c.get_sensor_data()
-#        if c.get_sensor_data()['photo_l']:
-#            c.set_velocity(-100)
-#        else:
-#            c.set_velocity(0)
+        led.set_hsv(i % 100, 80, int(math.sin(math.radians(i * 10)) * 50 + 50))
+        i = i + 1
         time.sleep(0.1)
 
+def test_sensor():
+    c = ChibiPiBot()
+    while True:
+        s = c.get_sensor_data()
+        print s
+        time.sleep(0.1)
+
+def test_motor():
+    c = ChibiPiBot()
+    c.set_velocity(100, 0)
+    time.sleep(0.5)
+    c.set_velocity(-100, 0)
+    time.sleep(0.5)
+    c.set_velocity(0, 100)
+    time.sleep(0.5)
+    c.set_velocity(0, -100)
+    time.sleep(0.5)
+    c.set_velocity(0, 0)
+    time.sleep(0.5)
+
+if __name__ == '__main__':
+    test_led()
+#    test_sensor()
+#    test_motor()
+
+#        print s
+#        c.set_velocity(100, 0)
+#        time.sleep(1)
+#        c.set_velocity(-100, 0)
+#        time.sleep(1)
+#        c.set_velocity(0, 0)
+#        time.sleep(1)
+#        with open('v_charge.txt', 'a') as f:
+#            f.write('%d %f\n' % (i, s['v_charge']))
+#        time.sleep(1)
+#        print s['v_charge']
+#        i += 1

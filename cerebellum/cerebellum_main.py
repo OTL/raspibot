@@ -160,12 +160,6 @@ def stopper(sensor_dict, command, history, ignoring_time):
 
 
 ### drivers
-def system_command(system_command):
-    if system_command == 'poweroff':
-        self._robot_driver.set_velocity(0, 0)
-        os.system('poweroff')
-
-
 class CommandDriver(object):
     def __init__(self, driver, emotion, health):
         self._robot_driver = driver
@@ -239,10 +233,22 @@ class CommandDriver(object):
     def deal_health(self, health_value):
         self._health.add(health_value)
 
+    def system_command(self, command):
+        if command == 'poweroff':
+            self._robot_driver.set_velocity(0, 0)
+            os.system('poweroff')
+        elif command == 'exit':
+            self._robot_driver.set_velocity(0, 0)
+            sys.exit(0)
+
 
 class ChibiPiBotCerebellum(object):
     def __init__(self):
         self._robot_driver = ChibiPiBot()
+        initial_sensor = self._robot_driver.get_sensor_data()
+        if initial_sensor['touch_r'] and initial_sensor['touch_l']:
+            utils.speak(u'デバッグモードで起動します')
+            sys.exit(0)
         self._emotion = Emotion()
         self._health = Health(0, 0, -10000)
         self._vision = vision.VisionSensor()
@@ -267,8 +273,9 @@ class ChibiPiBotCerebellum(object):
                                                     ],
                                        'emotion': [self._command_driver.deal_emotion],
                                        'health': [self._command_driver.deal_health],
+                                       'system': [self._command_driver.system_command],
                                        },
-                                      [touch_motion, emotional_motion, show_network, connect_network_by_code, speak_time, 
+                                      [touch_motion, emotional_motion, show_network, connect_network_by_code, speak_time,
                                        shutdown_by_vision, deal_emotion, deal_health, listen_sound, check_ground,  random_motion,
                                        overwrite_direct_command, stopper])
 

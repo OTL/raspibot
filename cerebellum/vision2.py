@@ -75,7 +75,7 @@ class CodeReader(object):
 class VisionSensor(object):
 
     def __init__(self, image_width=IMAGE_WIDTH, image_height=IMAGE_HEIGHT):
-        self._camera = cv2.VideoCapture(-1)
+        self._camera = cv2.VideoCapture(0)
         # allow the camera to warmup
         time.sleep(0.1)
         self._camera.set(cv2.cv.CV_CAP_PROP_FRAME_WIDTH, image_width)

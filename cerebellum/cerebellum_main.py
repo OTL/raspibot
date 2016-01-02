@@ -89,11 +89,11 @@ def listen_sound(sensor_dict, command, history, ignoring_time):
         ignoring_time['mic'] = sensor_dict['from_start_sec']
     if ignoring_time['mic'] < sensor_dict['from_start_sec']:
         if sensor_dict.get('mic_r') and sensor_dict.get('mic_l'):
-            if sensor_dict.get('mic_r') > 30 and sensor_dict.get('mic_l') > 30:
+            if sensor_dict.get('mic_r') > 80 and sensor_dict.get('mic_l') > 80:
                 command['velocity'] = (80, 0)
                 command['speak'] = u'はいはい'
                 ignoring_time['mic'] = sensor_dict['from_start_sec'] + 2
-            elif sensor_dict.get('mic_r') > 10 and sensor_dict.get('mic_l') > 10:
+            elif sensor_dict.get('mic_r') > 60 and sensor_dict.get('mic_l') > 60:
                 if sensor_dict.get('mic_r') - 10 > sensor_dict.get('mic_l'):
                     command['velocity'] = (0, 80)
                     ignoring_time['mic'] = sensor_dict['from_start_sec'] + 2
@@ -110,17 +110,19 @@ def check_ground(sensor_dict, command, history, ignoring_time):
     if abs(sensor_dict['rotation'][0]) > 0.3 or abs(sensor_dict['rotation'][1]) > 0.3:
         return
     if 'photo_r' in sensor_dict and 'photo_l' in sensor_dict:
-        if sensor_dict['photo_l'] == 1 and sensor_dict['photo_r'] == 1:
+        is_air_l = sensor_dict['photo_l'] > 2000
+        is_air_r = sensor_dict['photo_r'] > 2000
+        if is_air_l and is_air_r:
             rand = random.random()
             if rand < 0.5:
                 command['dance'] = 5
             else:
                 command['dance'] = 6
             command['sound'] = 'back'
-        elif sensor_dict['photo_l'] == 1:
+        elif is_air_l:
             command['dance'] = 5
             command['sound'] = 'back'
-        elif sensor_dict['photo_l'] == 1:
+        elif is_air_r:
             command['dance'] = 6
             command['sound'] = 'back'
 

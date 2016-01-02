@@ -47,6 +47,35 @@ class PwmWithNotMotor(PwmMotor):
         self._pwm2.stop()
 
 
+class BinaryNotMotor(PwmMotor):
+
+    def __init__(self, pin1, pin2):
+        GPIO.setup(pin1, GPIO.OUT)
+        GPIO.setup(pin2, GPIO.OUT)
+        self._pin1 = pin1
+        self._pin2 = pin2
+
+    def set_duty_cycle(self, signed_percent):
+        if signed_percent > 100:
+            signed_percent = 100
+        if -signed_percent < -100:
+            signed_percent = -100
+
+        if signed_percent > 0:
+            GPIO.output(self._pin1, False)
+            GPIO.output(self._pin2, True)
+        elif signed_percent < 0:
+            GPIO.output(self._pin1, True)
+            GPIO.output(self._pin2, False)
+        else:
+            GPIO.output(self._pin1, False)
+            GPIO.output(self._pin2, False)
+
+    def stop(self):
+        GPIO.output(self._pin1, False)
+        GPIO.output(self._pin2, False)
+
+
 class DiffDriveMobileBase(object):
 
     def __init__(self, pwm_motor_l, pwm_motor_r):
@@ -133,7 +162,7 @@ class AverageData(object):
 
 class ChibiPiBot(object):
 
-    def __init__(self):
+    def __init__(self, timeout_sec=1.0):
         GPIO.setwarnings(False)
         GPIO.setmode(GPIO.BCM)
         self._touch_sensor_l = TouchSensor(19)
@@ -149,6 +178,7 @@ class ChibiPiBot(object):
         self._thread.start()
         self._lock = threading.Lock()
         self._last_updated_time = time.mktime(time.localtime())
+        self._timeout_sec = timeout_sec
 
     def stop(self):
         self._is_stopping = True
@@ -157,7 +187,7 @@ class ChibiPiBot(object):
     def _check_timeout(self):
         while not self._is_stopping:
             time.sleep(0.1)
-            if time.mktime(time.localtime()) - self._last_updated_time > 1.0:
+            if time.mktime(time.localtime()) - self._last_updated_time > self._timeout_sec:
                 with self._lock:
                     self._mobile_base.set_velocity(0, 0)
 
@@ -237,9 +267,9 @@ def test_motor():
     time.sleep(0.5)
 
 if __name__ == '__main__':
-    test_led()
+#    test_led()
 #    test_sensor()
-#    test_motor()
+    test_motor()
 
 #        print s
 #        c.set_velocity(100, 0)

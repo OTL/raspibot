@@ -46,6 +46,7 @@ class Cerebellum(object):
 
     def get_sensor_and_execute(self):
         sensor = self.get_sensor_data()
+        print sensor
         print sensor['on_flat_ground']
         print sensor['average_rotation']
         command = self.get_command(sensor)

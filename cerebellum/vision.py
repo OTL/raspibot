@@ -93,15 +93,16 @@ class VisionSensor(object):
             if self._is_stopping:
                 break
             try:
-                print 'cap'
+#                print 'cap'
                 img = frame.array
                 self._rawCapture.truncate(0)
-                if not self._jpeg_sender.send_image(img):
-                    print 'failed to encode image'
+#                if not self._jpeg_sender.send_image(img):
+#                    print 'failed to encode image'
                 with self._lock:
                     cv2.imwrite('hoge.jpg', img)
                     self._sensor_data['darkness'] = self._darkness_recognizer.is_dark(img)
                     self._sensor_data['code'] = self._code_reader.decode(img)
+                    print self._sensor_data
                 time.sleep(0.01)
             except KeyboardInterrupt, exceptions.AttributeError:
                 self._jpeg_sender.close()

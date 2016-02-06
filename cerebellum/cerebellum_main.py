@@ -45,7 +45,8 @@ def show_network(sensor_dict, command, history, ignoring_time):
         command['speak'] = u'ネットワークから切断したみたい'
 
 def connect_network_by_code(sensor_dict, command, history, ignoring_time):
-    if not sensor_dict['is_online'] and sensor_dict.get('code'):
+#    if not sensor_dict['is_online'] and sensor_dict.get('code'):
+    if sensor_dict.get('code'):
         utils.set_wifi_from_string(sensor_dict['code'])
 
 def speak_time(sensor_dict, command, history, ignoring_time):
@@ -89,7 +90,7 @@ def listen_sound(sensor_dict, command, history, ignoring_time):
         ignoring_time['mic'] = sensor_dict['from_start_sec']
     if ignoring_time['mic'] < sensor_dict['from_start_sec']:
         if sensor_dict.get('mic_r') and sensor_dict.get('mic_l'):
-            if sensor_dict.get('mic_r') > 80 and sensor_dict.get('mic_l') > 80:
+            if sensor_dict.get('mic_r') > 100 and sensor_dict.get('mic_l') > 100:
                 command['velocity'] = (80, 0)
                 command['speak'] = u'はいはい'
                 ignoring_time['mic'] = sensor_dict['from_start_sec'] + 2
@@ -247,7 +248,7 @@ class ChibiPiBotCerebellum(object):
         self._robot_driver = ChibiPiBot()
         initial_sensor = self._robot_driver.get_sensor_data()
         if initial_sensor['touch_r'] and initial_sensor['touch_l']:
-            utils.speak(u'デバッグモードで起動します')
+            utils.speak(u'デバッグモードで起動します').wait()
             sys.exit(0)
         self._emotion = Emotion()
         self._health = Health(0, 0, -10000)
@@ -300,4 +301,5 @@ def main():
         c.close()
 
 if __name__ == '__main__':
+    utils.speak(u'IPアドレスは%s' % utils.get_ip_address_string()).wait()
     main()

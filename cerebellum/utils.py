@@ -14,20 +14,23 @@ def set_wifi_from_string(text):
     m = re.match('^ssid:\s*(.+)\s*^passwd:\s*(.+)\s*', text, re.MULTILINE)
     if m is not None:
         ssid = m.group(1)
+        speak(u'%sに接続します' % ssid)
         passwd = m.group(2)
         devnull = open(os.devnull, 'wb')
         p1 = subprocess.Popen('/usr/bin/wpa_passphrase %s %s |grep -v \#|grep psk= |sed -e s/"\s"psk=//' % (ssid, passwd), stdout=subprocess.PIPE, shell=True)
         p1.wait()
         encoded_passwd = p1.stdout.read().replace('\n', '')
         print(encoded_passwd)
-        p = subprocess.Popen('cat /etc/wpa_supplicant/wpa_supplicant.conf |sed -e s/psk=.*/psk=%s/ | sed -e s/ssid=".*"/ssid="%s"/ > /tmp/wpa_supplicant.conf' % (encoded_passwd, ssid),
-                             stdout=devnull,
-                             stderr=devnull,
-                             shell=True)
-        subprocess.Popen('cp -b /tmp/wpa_supplicant.conf /etc/wpa_supplicant/wpa_supplicant.conf').wait()
-        subprocess.Popen('/etc/init.d/networking restart').wait()
+        tmp_file_path = '/tmp/wpa_supplicant.conf'
+        subprocess.Popen('/bin/cat /etc/wpa_supplicant/wpa_supplicant.conf |sed -e s/psk=.*/psk=%s/ | sed -e s/ssid=".*"/ssid=\\"%s\\"/ > %s' % (encoded_passwd, ssid, tmp_file_path),
+                         stdout=devnull,
+                         stderr=devnull,
+                         shell=True).wait()
+        subprocess.Popen('/bin/cp -b %s /etc/wpa_supplicant/wpa_supplicant.conf' % tmp_file_path, shell=True).wait()
+        subprocess.Popen('/etc/init.d/networking restart', shell=True).wait()
         devnull.close()
         print ('%s %s' % (ssid, passwd))
+        speak('IPアドレスは%s' % get_ip_address_string()).wait()
 
 
 def speak(text):
@@ -76,6 +79,6 @@ def get_weather_temperature():
     return (max_temp, min_temp)
 
 if __name__ == '__main__':
-    speak('こんにちわ').wait()
-    speak('IPアドレスは%s' % get_ip_address_string()).wait()
-
+#    speak('こんにちわ').wait()
+#    speak('IPアドレスは%s' % get_ip_address_string()).wait()
+    set_wifi_from_string('ssid:otl001\npasswd:qwertyuiop')

@@ -5,9 +5,26 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 import codecs
+import collections
 import os
 import subprocess
 import re
+
+
+class AverageFilter(object):
+    def __init__(self, length):
+        self._buffer = collections.deque([], length)
+
+    def append(self, data):
+        self._buffer.append(data)
+
+    def get_average(self):
+        l = list(self._buffer)
+        s = 0.0
+        for d in l:
+            s += d
+        return s / float(len(l))
+
 
 def set_wifi_from_string(text):
     '''text is 'ssid:hgoehoge\npasswd:hogehoge' '''

@@ -8,6 +8,7 @@ import numpy
 import socket
 import threading
 import time
+import urllib2
 
 from SimpleXMLRPCServer import SimpleXMLRPCServer
 from SimpleXMLRPCServer import SimpleXMLRPCRequestHandler
@@ -16,24 +17,19 @@ from http_server import HttpMjpegServer
 from http_server import HttpMjpegHandler
 from websocket_server import WebsocketServer
 
+
+def send_ifttt(event_name):
+    urllib2.urlopen('https://maker.ifttt.com/trigger/%s/with/key/d45C-YTPDxBG0pSZ8uE2-T' % event_name).read()
+
 # Restrict to a particular path.
 class RequestHandler(SimpleXMLRPCRequestHandler):
     rpc_paths = ('/RPC2',)
 
-class RpcCommandServer(object):
+
+class CommandServer(object):
     def __init__(self, port=12346):
         self._sensor_dict = {}
-        self._server = SimpleXMLRPCServer(("0.0.0.0", port),
-                                          logRequests=False,
-                                          requestHandler=RequestHandler, allow_none=True)
-        self._server.register_introspection_functions()
-        self._server.register_function(self.get_command)
         self._command = {}
-
-    def start(self):
-        self._server_thread = threading.Thread(target=self._server.serve_forever)
-        self._server_thread.setDaemon(True)
-        self._server_thread.start()
 
     def update_sensor_data(self, sensor_dict):
         self._sensor_dict.update(sensor_dict)
@@ -41,17 +37,41 @@ class RpcCommandServer(object):
     def update_command(self, command_dict):
         self._command.update(command_dict)
 
+    def get_sensor_data(self):
+        return self._sensor_dict
+
+    def start(self):
+        pass
+
+
+class RpcCommandServer(CommandServer):
+    ''' disabled now'''
+    def __init__(self, port=12346):
+        super(RpcCommandServer, self).__init__()
+        self._last_sensor_dict = {}
+        self._server = SimpleXMLRPCServer(("0.0.0.0", port),
+                                          logRequests=False,
+                                          requestHandler=RequestHandler, allow_none=True)
+        self._server.register_introspection_functions()
+        self._server.register_function(self.get_command)
+
+    def start(self):
+        self._server_thread = threading.Thread(target=self._server.serve_forever)
+        self._server_thread.setDaemon(True)
+        self._server_thread.start()
+
     def get_command(self, cerebellum_sensor_dict):
         # speak
         command = copy.copy(self._command)
         # clear
         self._command = {}
         if 'faces' in self._sensor_dict:
-            if len(self._sensor_dict['faces']) == 1:
+            if len(self._sensor_dict['faces']) > 1 and len(self._last_sensor_dict['faces']) == 0:
                 command['command_speak'] = u'こんにちは'
-            elif len(self._sensor_dict['faces']) > 1:
-                command['command_speak'] = u'みんなでどうしたの'
+                #send_ifttt('face')
+        self._last_sensor_dict = copy.copy(self._sensor_dict)
         return command
+
 
 class DataWithLock():
     def __init__(self, data=None):
@@ -65,6 +85,7 @@ class DataWithLock():
     def get_data(self):
         with self._lock:
             return self._data
+
 
 class FaceDetector(object):
     
@@ -90,23 +111,23 @@ class JpegUdpReceiver(object):
 
     def receive_jpeg(self):
         '''block until get data'''
-        jpgstring, addr = self._udp.recvfrom(1024 * 64)
+        jpgstring, addr = self._udp.recvfrom(1024 * 64 * 10)
         return numpy.fromstring(jpgstring, dtype = "uint8")
         
     def close(self):
         self._udp.close()
 
 
-if __name__ == "__main__":
-    rpc_server = RpcCommandServer()
-    rpc_server.start()
-    receiver = JpegUdpReceiver()
+def main():
     face_detector = FaceDetector()
     mjpeg_server = HttpMjpegServer()
     mjpeg_server.start()
-    websocket_server = WebsocketServer(rpc_server)
-    websocket_server.start()
     image_with_lock = DataWithLock()
+    receiver = JpegUdpReceiver()
+    dummy_img = cv2.imread('dummy.jpg')
+    # opencv2.2 hack
+    image_with_lock.set_data(cv2.cv.EncodeImage(".jpeg", cv2.cv.fromarray(dummy_img)))
+    HttpMjpegHandler.jpg_image = image_with_lock
     while True:
         try:
             image_with_lock.set_data(receiver.receive_jpeg())
@@ -115,7 +136,8 @@ if __name__ == "__main__":
             if cv2.waitKey(10) == 27:
                 break
             faces = face_detector.detect_faces(img)
-            rpc_server.update_sensor_data({'faces': faces})
+# TODO:
+#            robot_bridge.update_sensor_data({'faces': faces})
             face_detector.draw_face_rectangle(img, faces)
             cv2.imshow("chibipibot camera", img)
             time.sleep(0.01)
@@ -125,3 +147,7 @@ if __name__ == "__main__":
     cv2.destroyAllWindows()
     receiver.close()
     mjpeg_server.close()
+
+
+if __name__ == "__main__":
+    main()

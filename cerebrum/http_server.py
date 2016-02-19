@@ -16,7 +16,8 @@ class HttpMjpegHandler(BaseHTTPRequestHandler):
         self.send_header(
             'Content-type', 'multipart/x-mixed-replace; boundary=--jpgboundary')
         self.end_headers()
-        if HttpMjpegHandler.jpg_image.get_data() is not None:
+        if HttpMjpegHandler.jpg_image is not None and (
+            HttpMjpegHandler.jpg_image.get_data() is not None):
             jpg_binary = HttpMjpegHandler.jpg_image.get_data().tostring()
             self.wfile.write("--jpgboundary")
             self.send_header('Content-type', 'image/jpeg')
@@ -58,4 +59,3 @@ class HttpMjpegServer(object):
 
     def close(self):
         self._server.socket.close()
-

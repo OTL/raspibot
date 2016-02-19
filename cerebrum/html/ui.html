@@ -14,38 +14,140 @@
   </head>
   <body>
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.3/jquery.min.js"></script>
+    <script src="beehive_picker.js"></script>
     <script src="ui.js"></script>
-
-    <div id="camera-stream">
-      <img src="http://smilerobotics.com:8088/camera.mjpg" />
+    <div class="container">
+      <div class="row">
+	<div class="col-sm-6 col-xs-12">
+	  <div id="camera-stream" class="img-responsive img-thumbnail" >
+	    <img src="http://smilerobotics.com:8088/camera.mjpg" />
+	  </div>
+	</div>
+	<div class="col-sm-6 col-xs-12">
+	  <table class="table table-striped">
+	    <thead>
+	      <tr>
+		<th>item</th>
+		<th>icons</th>
+		<th>value</th>
+		<th>action</th>
+	      </tr>
+	    </thead>
+	    <tbody>
+	      <tr>
+		<th scope="row">battery</th>
+		<td>oooooo...</td>
+		<td>0.8</td>
+	      </tr>
+	      <tr>
+		<th scope="row">emosion</th>
+		<td>oo.......</td>
+		<td>0.2</td>
+		<td>
+		  <button type="button" class="btn btn-info" id="emotion_up">
+		    <span class="glyphicon glyphicon-triangle-left" aria-hidden="true"></span>
+		    Touch!</button>
+		</td>
+	      </tr>
+	      <tr>
+		<th scope="row">Poo</th>
+		<td>oo.......</td>
+		<td>0.2</td>
+		<td>
+		  <button type="button" class="btn btn-info" id="clear_poo">
+		    <span class="glyphicon glyphicon-triangle-left" aria-hidden="true"></span>
+		    Flush</button>
+		</td>
+	      </tr>
+	    </tbody>
+	  </table>
+	</div>
+      </div>
     </div>
-    <div class="btn-group" role="group">
-      <button type="button" class="btn btn-lg" id="say_move">
-	<span class="glyphicon glyphicon-bullhorn" aria-hidden="true"></span>
-	どいて</button>
-      <button type="button" class="btn btn-lg" id="say_hello">
-	<span class="glyphicon glyphicon-thumbs-up" aria-hidden="true"></span>
-	こんにちは</button>
+
+    <div class="container">
+      <div class="row">
+	<div class="col-xs-4">
+	  <button type="button" class="btn btn-block btn-success" id="say_move">
+	    <span class="glyphicon glyphicon-bullhorn" aria-hidden="true"></span>
+	    どいて</button>
+	</div>
+	<div class="col-xs-4">
+	  <button type="button" class="btn btn-block btn-success" id="say_hello">
+	    <span class="glyphicon glyphicon-thumbs-up" aria-hidden="true"></span>
+	    こんにちは</button>
+	</div>
+      </div>
     </div>
     <br />
-    <div class="btn-group" role="group">
-      <button type="button" class="btn btn-primary btn-lg" id="go_left">
-	<span class="glyphicon glyphicon-triangle-left" aria-hidden="true"></span>
-	Left</button>
-      <button type="button" class="btn btn-primary btn-lg" id="go_forward">
-	<span class="glyphicon glyphicon-triangle-top" aria-hidden="true"></span>
-	Forward</button>
-      <button type="button" class="btn btn-primary btn-lg" id="go_right">
-	 <span class="glyphicon glyphicon-triangle-right" aria-hidden="true"></span>
-	 Right</button>
+    <div class="container">
+      <div class="row">
+	<div class="col-xs-4">
+	</div>
+	<div class="col-xs-4">
+	  <button type="button" class="btn btn-info btn-block" id="go_forward">
+	    <span class="glyphicon glyphicon-triangle-top" aria-hidden="true"></span>
+	    Forward</button>
+	</div>
       </div>
-    <div class="btn-group" role="group">
-      <button type="button" class="btn btn-primary btn-lg" id="go_backward">
-	<span class="glyphicon glyphicon-triangle-bottom" aria-hidden="true"></span>
-	Back</button>
-      <button type="button" class="btn btn-primary btn-lg" id="go_stop">
-	<span class="glyphicon glyphicon-stop" aria-hidden="true"></span>
-	Stop</button>
+      <div class="row">
+	<div class="col-xs-4">
+	  <button type="button" class="btn btn-info btn-block" id="go_left">
+	    <span class="glyphicon glyphicon-triangle-left" aria-hidden="true"></span>
+	    Left</button>
+	</div>
+	<div class="col-xs-4">
+	  <button type="button" class="btn btn-block btn-warning" id="go_stop">
+	    <span class="glyphicon glyphicon-stop" aria-hidden="true"></span>
+	    Stop</button>
+	</div>
+	<div class="col-xs-4">
+	  <button type="button" class="btn btn-info btn-block" id="go_right">
+	    <span class="glyphicon glyphicon-triangle-right" aria-hidden="true"></span>
+	    Right</button>
+	</div>
+      </div>
+      <div class="row">
+	<div class="col-xs-4">
+	</div>
+	<div class="col-xs-4">
+	  <button type="button" class="btn btn-info btn-block" id="go_backward">
+	    <span class="glyphicon glyphicon-triangle-bottom" aria-hidden="true"></span>
+	    Back</button>
+	</div>
+	<div class="col-xs-4">
+	</div>
+      </div>
+      <div class="row">
+	<div id="color_picker1" class="col-xs-6">
+	</div>
+	<div id="color_picker2" class="col-xs-6">
+	</div>
+      </div>
     </div>
+
+    <div class="container">
+      <table class="table table-striped">
+	<thead>
+	  <tr>
+	    <th>sensor</th>
+	    <th>value</th>
+	  </tr>
+	</thead>
+	<tbody id="sensors">
+	</tbody>
+      </table>
+      <table class="table table-striped">
+	<thead>
+	  <tr>
+	    <th>Time</th>
+	    <th>event</th>
+	  </tr>
+	</thead>
+	<tbody id="events">
+	</tbody>
+      </table>
+    </div>
+
   </body>
 </html>

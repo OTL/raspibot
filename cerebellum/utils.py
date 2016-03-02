@@ -96,6 +96,6 @@ def get_weather_temperature():
     return (max_temp, min_temp)
 
 if __name__ == '__main__':
-#    speak('こんにちわ').wait()
+    speak('こんにちわ').wait()
 #    speak('IPアドレスは%s' % get_ip_address_string()).wait()
-    set_wifi_from_string('ssid:otl001\npasswd:qwertyuiop')
+#    set_wifi_from_string('ssid:otl001\npasswd:qwertyuiop')

@@ -15,7 +15,7 @@ IMAGE_HEIGHT = 240
 class ImageJpegUdpSender(object):
 
     def __init__(self, host, port):
-        self._host = host
+        self._host = socket.gethostbyname(host)
         self._port = port
         self._udp = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
@@ -96,8 +96,8 @@ class VisionSensor(object):
 #                print 'cap'
                 img = frame.array
                 self._rawCapture.truncate(0)
-#                if not self._jpeg_sender.send_image(img):
-#                    print 'failed to encode image'
+                if not self._jpeg_sender.send_image(img):
+                    print 'failed to encode image'
                 with self._lock:
                     cv2.imwrite('hoge.jpg', img)
                     self._sensor_data['darkness'] = self._darkness_recognizer.is_dark(img)

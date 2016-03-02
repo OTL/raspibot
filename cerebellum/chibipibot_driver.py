@@ -206,9 +206,11 @@ class ChibiPiBot(object):
         photo_r = self._spi.read(5)
         photo_rl = self._spi.read(2)
         photo_rr = self._spi.read(3)
-        a_charge_raw_val = self._spi.read(7)
-        a_charge_raw_v = a_charge_raw_val * 3.3 / 4096.0
-        self._a_charge_filter.append((a_charge_raw_v - 2.5) / 0.185)
+#        a_charge_raw_val = self._spi.read(7)
+        # -300 is magic number.
+#        a_charge_raw_v = a_charge_raw_val * 3.3 / 4096.0
+#        a_charge_raw_v = (a_charge_raw_val - 3000) * 3.3 / 4096.0
+#        self._a_charge_filter.append((a_charge_raw_v - 2.5) / 0.185)
         return {'touch_l': self._touch_sensor_l.is_touched(),
                 'touch_r': self._touch_sensor_r.is_touched(),
                 'photo_l': photo_l,
@@ -217,8 +219,8 @@ class ChibiPiBot(object):
                 'photo_rr': photo_rr,
                 'mic_r': self._mic_r_queue.get_average(),
                 'mic_l': self._mic_l_queue.get_average(),
-                'v_charge': round(self._spi.read(4) * 2.0 * 3.3 / 4096.0, 2),
-                'a_charge': round(self._a_charge_filter.get_average(), 2),
+                'v_batt': round(self._spi.read(4) * 2.0 * 3.3 / 4096.0, 2),
+                'v_charge': round(self._spi.read(7) * 2.0 * 3.3 / 4096.0, 2),
                 }
 
 import colorsys
@@ -246,8 +248,8 @@ class PwmRGB(object):
 
 def test_led():
     GPIO.setmode(GPIO.BCM)
-    led1 = PwmRGB(19, 16, 26)
-    led2 = PwmRGB(6, 12, 13)
+    led1 = PwmRGB(19, 26, 16)
+    led2 = PwmRGB(6, 13, 12)
     i = 0
     import math
     while True:
@@ -277,8 +279,8 @@ def test_motor():
     time.sleep(0.5)
 
 if __name__ == '__main__':
-#    test_led()
-    test_sensor()
+    test_led()
+#    test_sensor()
 #    test_motor()
 
 #        print s

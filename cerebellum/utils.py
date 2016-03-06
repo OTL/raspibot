@@ -68,7 +68,7 @@ def speak(text):
 import sys
 
 def play_sound(file_path):
-    this_dir = os.path.dirname(sys.argv[0])
+    this_dir = os.path.dirname(os.path.realpath(__file__))
     devnull = open(os.devnull, 'wb')
     p = subprocess.Popen('aplay %s/wav/%s' % (this_dir, file_path),
                          stdout=devnull, stderr=devnull, shell=True)

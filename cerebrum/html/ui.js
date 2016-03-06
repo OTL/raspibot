@@ -40,6 +40,9 @@ $(function() {
     ws.onerror = function(error) {
 	console.log('ws error' + error);
     }
+    ws.onclose = function() {
+	
+    }
     ws.onmessage = function(e) {
 	try {
 	    var msg = $.parseJSON(e.data);
@@ -67,39 +70,68 @@ $(function() {
 		}
 		$("#sensors").append(text);
 	    }
+	    if (msg.battery) {
+		$('#battery_percent').text(msg.battery['percent']);
+		var battery_level = msg.battery['percent'] / 20;
+		for (var i = 0; i < 5; i++) {
+		    if (i < battery_level) {
+			if (msg.battery['is_charging']) {
+			    $('#battery_icon' + i).addClass('glyphicon-flash');
+			} else {
+			    $('#battery_icon' + i).addClass('glyphicon-apple');
+			}
+		    } else {
+			$('#battery_icon' + i).removeClass('glyphicon-flash glyphicon-apple');
+		    }
+		}
+	    }
 	} catch(e) {
 	    alert(e);
 	    return;
 	}
     };
+
+    var stop_command = function() {
+	ws.send('{"cmd_vel": {"x": 0, "theta": 0}}')
+    };
+
     $('#go_forward').click(function() {
-//	ws.send('{"command_velocity": [100, 0]}')
-	ws.send('{"cmd_vel": {"x": 100, "theta": 0}}')
+	ws.send('{"cmd_vel": {"x": 100, "theta": 0}}');
+	setTimeout(stop_command, 200);
     });
     $('#go_left').click(function() {
 //	ws.send('{"cmd_vel": [0, 100]}')
 	ws.send('{"cmd_vel": {"x": 0, "theta": 100}}')
+	setTimeout(stop_command, 200);
     });
     $('#go_right').click(function() {
 //	ws.send('{"cmd_vel": [0, -100]}')
 	ws.send('{"cmd_vel": {"x": 0, "theta": -100}}')
+	setTimeout(stop_command, 200);
     });
     $('#go_backward').click(function() {
 //	ws.send('{"cmd_vel": [-100, 0]}')
 	ws.send('{"cmd_vel": {"x": -100, "theta": 0}}')
+	setTimeout(stop_command, 200);
     });
     $('#go_stop').click(function() {
 //	ws.send('{"cmd_vel": [0, 0]}')
 	ws.send('{"cmd_vel": {"x": 0, "theta": 0}}')
     });
+    var speak = function(msg) {
+        ws.send('{"sound": {"speak": "' + msg + '"}}')
+    };
     $('#say_move').click(function() {
-        ws.send('{"command_speak": "¤É¤¤¤Æ¤¯¤À¤µ¤¤"}')
+	speak('ã©ã„ã¦ãã ã•ã„')
     });
     $('#say_hello').click(function() {
-        ws.send('{"command_speak": "¤³¤ó¤Ë¤Á¤Ï"}')
+	speak('ã“ã‚“ã«ã¡ã‚');
+    });
+    $('#play_chime').click(function() {
+        ws.send('{"sound": {"sound": "chime"}}')
     });
 
-//    $('#sender').append($('<button/>').text('send').click(function(){
-//        ws.send($('#message').val());
-//    }));
+    $('#speak_send').click(function(){
+	speak($('#speak_text').val());
+    });
 });

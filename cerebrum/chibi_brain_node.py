@@ -60,30 +60,49 @@ class JpegUdpReceiver(object):
         self._udp.close()
 
 
+import multiprocessing
+import jps
+import jps.forwarder
+
+
+class JpsImageReceiver:
+    def __init__(self):
+        self._sub = jps.Subscriber('image', self.callback)
+        self.jpeg_image = DataWithLock()
+        self.image = DataWithLock()
+
+    def spin_once(self):
+        self._sub.spin_once()
+
+    def callback(self, msg):
+        jpg_data = numpy.fromstring(msg, dtype = "uint8")
+        self.jpeg_image.set_data(jpg_data)
+        self.image.set_data(cv2.imdecode(jpg_data, 1))
+            
+        
 def main():
-    import multiprocessing
-    import jps
-    import jps.forwarder
     forwarder_process = multiprocessing.Process(target=jps.forwarder.main)
     forwarder_process.start()
 
     websocket_process = multiprocessing.Process(target=websocket_server.main)
     websocket_process.start()
+    receiver = JpsImageReceiver()
 
-    face_detector = FaceDetector()
     mjpeg_server = HttpMjpegServer()
     mjpeg_server.start()
-    image_with_lock = DataWithLock()
-    receiver = JpegUdpReceiver()
+    face_detector = FaceDetector()
     dummy_img = cv2.imread('dummy.jpg')
     # opencv2.2 hack
-    image_with_lock.set_data(cv2.cv.EncodeImage(".jpeg", cv2.cv.fromarray(dummy_img)))
-    HttpMjpegHandler.jpg_image = image_with_lock
+    receiver.jpeg_image.set_data(cv2.cv.EncodeImage(".jpeg", cv2.cv.fromarray(dummy_img)))
+    receiver.image.set_data(dummy_img)
+
+    HttpMjpegHandler.jpg_image = receiver.jpeg_image
     while True:
         try:
-            image_with_lock.set_data(receiver.receive_jpeg())
-            HttpMjpegHandler.jpg_image = image_with_lock
-            img = cv2.imdecode(image_with_lock.get_data(), 1)
+            receiver.spin_once()
+#            HttpMjpegHandler.jpg_image = image_with_lock
+#            img = cv2.imdecode(image_with_lock.get_data(), 1)
+            img = receiver.image.get_data()
 #            if cv2.waitKey(10) == 27:
 #                break
             faces = face_detector.detect_faces(img)
@@ -96,7 +115,7 @@ def main():
             break
             
 #    cv2.destroyAllWindows()
-    receiver.close()
+#    receiver.close()
     mjpeg_server.close()
 
 

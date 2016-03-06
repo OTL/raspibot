@@ -16,14 +16,17 @@ class HttpMjpegHandler(BaseHTTPRequestHandler):
         self.send_header(
             'Content-type', 'multipart/x-mixed-replace; boundary=--jpgboundary')
         self.end_headers()
-        if HttpMjpegHandler.jpg_image is not None and (
-            HttpMjpegHandler.jpg_image.get_data() is not None):
-            jpg_binary = HttpMjpegHandler.jpg_image.get_data().tostring()
-            self.wfile.write("--jpgboundary")
-            self.send_header('Content-type', 'image/jpeg')
-            self.send_header('Content-length', str(len(jpg_binary)))
-            self.end_headers()
-            self.wfile.write(jpg_binary)
+        try:
+            if HttpMjpegHandler.jpg_image is not None and (
+                HttpMjpegHandler.jpg_image.get_data() is not None):
+                jpg_binary = HttpMjpegHandler.jpg_image.get_data().tostring()
+                self.wfile.write("--jpgboundary")
+                self.send_header('Content-type', 'image/jpeg')
+                self.send_header('Content-length', str(len(jpg_binary)))
+                self.end_headers()
+                self.wfile.write(jpg_binary)
+        except:
+            print 'error'
 
     def handle_file(self):
         path = 'html' + self.path
@@ -58,4 +61,5 @@ class HttpMjpegServer(object):
         server_thread.start()
 
     def close(self):
+        print 'close http_server'
         self._server.socket.close()

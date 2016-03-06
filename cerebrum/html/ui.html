@@ -5,12 +5,16 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <!-- The above 3 meta tags *must* come first in the head; any other head content must come *after* these tags -->
-    <title>ChibiPiBot</title>
+    <title>ChibiPiBot UI for debug/fun</title>
 
     <!-- Bootstrap -->
     <!-- Latest compiled and minified CSS -->
     <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/css/bootstrap.min.css">
-    
+    <style type="text/css">
+      .top-buffer {
+      margin-top: 15px;
+      }
+    </style>
   </head>
   <body>
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.3/jquery.min.js"></script>
@@ -19,11 +23,13 @@
     <div class="container">
       <div class="row">
 	<div class="col-sm-6 col-xs-12">
+	  <h3>Camera</h3>
 	  <div id="camera-stream" class="img-responsive img-thumbnail" >
 	    <img src="http://smilerobotics.com:8088/camera.mjpg" />
 	  </div>
 	</div>
 	<div class="col-sm-6 col-xs-12">
+	  <h3>States</h3>
 	  <table class="table table-striped">
 	    <thead>
 	      <tr>
@@ -36,8 +42,14 @@
 	    <tbody>
 	      <tr>
 		<th scope="row">battery</th>
-		<td>oooooo...</td>
-		<td>0.8</td>
+		<td>
+		  <span id="battery_icon0" class="glyphicon" aria-hidden="true"></span>
+		  <span id="battery_icon1" class="glyphicon" aria-hidden="true"></span>
+		  <span id="battery_icon2" class="glyphicon" aria-hidden="true"></span>
+		  <span id="battery_icon3" class="glyphicon" aria-hidden="true"></span>
+		  <span id="battery_icon4" class="glyphicon" aria-hidden="true"></span>
+		</td>
+		<td id="battery_percent">0.8</td>
 	      </tr>
 	      <tr>
 		<th scope="row">emosion</th>
@@ -63,91 +75,147 @@
 	  </table>
 	</div>
       </div>
-    </div>
 
-    <div class="container">
-      <div class="row">
-	<div class="col-xs-4">
-	  <button type="button" class="btn btn-block btn-success" id="say_move">
-	    <span class="glyphicon glyphicon-bullhorn" aria-hidden="true"></span>
-	    どいて</button>
+      <div class="row top-buffer">
+	<!-- Move -->
+	<div class="col-xs-8 col-md-4">
+	  <h3>Move</h3>
+	  <div class="row">
+	    <div class="col-xs-4">
+	    </div>
+	    <div class="col-xs-4">
+	      <button type="button" class="btn btn-info btn-block" id="go_forward">
+		<span class="glyphicon glyphicon-triangle-top" aria-hidden="true"></span>
+	      </button>
+	    </div>
+	    <div class="col-xs-4">
+	    </div>
+	  </div>
+	  <div class="row top-buffer">
+	    <div class="col-xs-4">
+	      <button type="button" class="btn btn-info btn-block" id="go_left">
+		<span class="glyphicon glyphicon-triangle-left" aria-hidden="true"></span>
+	      </button>
+	    </div>
+	    <div class="col-xs-4">
+	      <button type="button" class="btn btn-block btn-warning" id="go_stop">
+		<span class="glyphicon glyphicon-stop" aria-hidden="true"></span>
+	      </button>
+	    </div>
+	    <div class="col-xs-4">
+	      <button type="button" class="btn btn-info btn-block" id="go_right">
+		<span class="glyphicon glyphicon-triangle-right" aria-hidden="true"></span>
+	      </button>
+	    </div>
+	  </div>
+	  <div class="row top-buffer">
+	    <div class="col-xs-4">
+	    </div>
+	    <div class="col-xs-4">
+	      <button type="button" class="btn btn-info btn-block" id="go_backward">
+		<span class="glyphicon glyphicon-triangle-bottom" aria-hidden="true"></span>
+	      </button>
+	    </div>
+	    <div class="col-xs-4">
+	    </div>
+	  </div>
 	</div>
-	<div class="col-xs-4">
-	  <button type="button" class="btn btn-block btn-success" id="say_hello">
-	    <span class="glyphicon glyphicon-thumbs-up" aria-hidden="true"></span>
-	    こんにちは</button>
-	</div>
-      </div>
-    </div>
-    <br />
-    <div class="container">
-      <div class="row">
-	<div class="col-xs-4">
-	</div>
-	<div class="col-xs-4">
-	  <button type="button" class="btn btn-info btn-block" id="go_forward">
-	    <span class="glyphicon glyphicon-triangle-top" aria-hidden="true"></span>
-	    Forward</button>
-	</div>
-      </div>
-      <div class="row">
-	<div class="col-xs-4">
-	  <button type="button" class="btn btn-info btn-block" id="go_left">
-	    <span class="glyphicon glyphicon-triangle-left" aria-hidden="true"></span>
-	    Left</button>
-	</div>
-	<div class="col-xs-4">
-	  <button type="button" class="btn btn-block btn-warning" id="go_stop">
-	    <span class="glyphicon glyphicon-stop" aria-hidden="true"></span>
-	    Stop</button>
-	</div>
-	<div class="col-xs-4">
-	  <button type="button" class="btn btn-info btn-block" id="go_right">
-	    <span class="glyphicon glyphicon-triangle-right" aria-hidden="true"></span>
-	    Right</button>
-	</div>
-      </div>
-      <div class="row">
-	<div class="col-xs-4">
-	</div>
-	<div class="col-xs-4">
-	  <button type="button" class="btn btn-info btn-block" id="go_backward">
-	    <span class="glyphicon glyphicon-triangle-bottom" aria-hidden="true"></span>
-	    Back</button>
-	</div>
-	<div class="col-xs-4">
-	</div>
-      </div>
-      <div class="row">
-	<div id="color_picker1" class="col-xs-6">
-	</div>
-	<div id="color_picker2" class="col-xs-6">
-	</div>
-      </div>
-    </div>
+	<!-- Move END -->
 
-    <div class="container">
-      <table class="table table-striped">
-	<thead>
-	  <tr>
-	    <th>sensor</th>
-	    <th>value</th>
-	  </tr>
-	</thead>
-	<tbody id="sensors">
-	</tbody>
-      </table>
-      <table class="table table-striped">
-	<thead>
-	  <tr>
-	    <th>Time</th>
-	    <th>event</th>
-	  </tr>
-	</thead>
-	<tbody id="events">
-	</tbody>
-      </table>
-    </div>
+	<!-- LED -->
+	<div class="col-xs-12 col-md-8">
+	  <div class="row top-buffer">
+	    <h3>LED</h3>
+	    <div>
+	      <div id="color_picker1" class="col-xs-6">
+	      </div>
+	      <div id="color_picker2" class="col-xs-6">
+	      </div>
+	    </div>
+	  </div>
+	</div>
+	<!-- LED END -->
+      </div>
 
+      <!-- Speak -->
+      <div class="row top-buffer">
+	<div class="col-xs-12">
+	  <h3>Speak</h3>
+	  <div class="row">
+	    <div class="col-xs-4">
+	      <button type="button" class="btn btn-block btn-success" id="say_move">
+		<span class="glyphicon glyphicon-bullhorn" aria-hidden="true"></span>
+		avoid</button>
+	    </div>
+	    <div class="col-xs-4">
+	      <button type="button" class="btn btn-block btn-success" id="say_hello">
+		<span class="glyphicon glyphicon-thumbs-up" aria-hidden="true"></span>
+		hello</button>
+	    </div>
+	    <div class="col-xs-4">
+	      <button type="button" class="btn btn-block btn-success" id="play_chime">
+		<span class="glyphicon glyphicon-thumbs-up" aria-hidden="true"></span>
+		Chime</button>
+	    </div>
+	  </div>
+
+	  <div class="row">
+	    <div class="col-xs-8">
+	      <input type="text" id="speak_text" class="form-control">
+	    </div>
+	    <div class="col-xs-4">
+	      <button type="button" class="btn btn-block btn-success" id="speak_send">
+		<span class="glyphicon glyphicon-thumbs-up" aria-hidden="true"></span>
+		Speak</button>
+	    </div>
+	  </div>
+
+	</div>
+      </div>
+
+      <div class="row top-buffer">
+	<div class="col-xs-6 col-ms-3">
+	  <h3>Sensors</h3>
+	  <table class="table table-striped">
+	    <thead>
+	      <tr>
+		<th>sensor</th>
+		<th>value</th>
+	      </tr>
+	    </thead>
+	    <tbody id="sensors">
+	    </tbody>
+	  </table>
+	</div>
+
+	<div class="col-xs-6 col-ms-3">
+	  <h3>Vision</h3>
+	  <table class="table table-striped">
+	    <thead>
+	      <tr>
+		<th>sensor</th>
+		<th>value</th>
+	      </tr>
+	    </thead>
+	    <tbody id="sensors">
+	    </tbody>
+	  </table>
+	</div>
+
+	<div class="col-xs-6 col-ms-3">
+	  <h3>Events</h3>
+	  <table class="table table-striped">
+	    <thead>
+	      <tr>
+		<th>Time</th>
+		<th>event</th>
+	      </tr>
+	    </thead>
+	    <tbody id="events">
+	    </tbody>
+	  </table>
+	</div>
+      </div>
+    </div>
   </body>
 </html>

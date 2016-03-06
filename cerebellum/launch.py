@@ -1,22 +1,24 @@
 #!/usr/bin/env python
 
-import chibipibot_node
-import vision_node
-import mpu_6050_node
-
 from multiprocessing import Process
 
+
+def launch_modules(module_names):
+    for module_name in module_names:
+        m = __import__(module_name)
+        p1 = Process(target=m.main)
+        p1.start()
+
+
 def main():
-    p1 = Process(target=chibipibot_node.main)
-    p1.start()
-    p2 = Process(target=vision_node.main)
-    p2.start()
-    p3 = Process(target=mpu_6050_node.main)
-    p3.start()
+    launch_modules([
+        'chibipibot_node',
+        'vision_node',
+        'mpu_6050_node',
+        'battery_node',
+        'sound_node',
+    ])
 
     
 if __name__ == '__main__':
     main()
-    
-        
-    

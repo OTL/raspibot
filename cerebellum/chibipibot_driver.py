@@ -219,7 +219,7 @@ class ChibiPiBot(object):
                 'photo_rr': photo_rr,
                 'mic_r': self._mic_r_queue.get_average(),
                 'mic_l': self._mic_l_queue.get_average(),
-                'v_batt': round(self._spi.read(4) * 2.0 * 3.3 / 4096.0, 2),
+                'v_battery': round(self._spi.read(4) * 2.0 * 3.3 / 4096.0, 2),
                 'v_charge': round(self._spi.read(7) * 2.0 * 3.3 / 4096.0, 2),
                 }
 

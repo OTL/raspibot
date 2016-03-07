@@ -17,6 +17,7 @@ def main():
         'mpu_6050_node',
         'battery_node',
         'sound_node',
+        'event_node',
     ])
 
     

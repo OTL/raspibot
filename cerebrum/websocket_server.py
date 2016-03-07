@@ -4,15 +4,9 @@
 from geventwebsocket.handler import WebSocketHandler
 from gevent import pywsgi
 import threading
-import datetime
 import json
 import jps
-import urllib2
 import time
-
-
-def send_ifttt(event_name):
-    urllib2.urlopen('https://maker.ifttt.com/trigger/%s/with/key/d45C-YTPDxBG0pSZ8uE2-T' % event_name).read()
 
 
 class CommandServer(object):
@@ -34,15 +28,17 @@ class CommandServer(object):
 
 
 class JpsCommandServer(CommandServer):
-    def __init__(self, callback, battery_callback):
+    def __init__(self, forward_topics, callback):
         super(JpsCommandServer, self).__init__()
-        self._sensor_sub = jps.Subscriber('sensor', callback)
-        self._battery_sub = jps.Subscriber('battery', battery_callback)
+        self._forward_topics = forward_topics
+        self._callback = callback
         self._all_pub = jps.utils.JsonMultiplePublisher()
+        self._subscribers = {}
 
     def start(self):
-        self._sensor_sub.spin(use_thread=True)
-        self._battery_sub.spin(use_thread=True)
+        for topic in self._forward_topics:
+            self._subscribers[topic] = jps.Subscriber(topic, self._callback(topic))
+            self._subscribers[topic].spin(use_thread=True)
 
     def update_command(self, command_dict):
         super(JpsCommandServer, self).update_command(command_dict)
@@ -67,47 +63,24 @@ class WebsocketServer(object):
         path = environ["PATH_INFO"]
         if path == "/chibipibot":
             return self.command_handle(environ, start_response)
-            
 
-    def send_event(self, event_name, send_data):
-        now = time.time()
-        if now - self._last_event_time > 30:
-            send_ifttt(event_name)
-            send_data['events'].append({'time': str(datetime.datetime.today()),
-                                        'text': event_name})
-            self._last_event_time = now
-            #self._last_event = event_name
-        
-    def sensor_callback(self, msg_json):
-        for ws in self._ws.values():
-            if not ws.closed:
-                send_data = {}
-                send_data['sensor'] = json.loads(msg_json)
-                send_data['events'] = []
-                try:
-                    if send_data['sensor']['mic_r'] > 200:
-                        self.send_event('loud', send_data)
-                    elif send_data['sensor']['v_battery'] < 3.4:
-                        self.send_event('low_battery', send_data)
-                    ws.send(json.dumps(send_data))
-                except KeyError as e:
-                    print e
 
-    def battery_callback(self, msg_json):
-        for ws in self._ws.values():
-            if not ws.closed:
-                send_data = {}
-                send_data['battery'] = json.loads(msg_json)
-                try:
-                    ws.send(json.dumps(send_data))
-                except:
-                    print 'failed to send battery'
+    def callback(self, topic_name):
+        def callback_with_topic_name(msg_json):
+            for ws in self._ws.values():
+                if not ws.closed:
+                    send_data = {}
+                    send_data[topic_name] = json.loads(msg_json)
+                    try:
+                        ws.send(json.dumps(send_data))
+                    except:
+                        print 'failed to send {}'.format(topic_name)
+        return callback_with_topic_name
 
 
     def __init__(self, port=9090):
-        self._last_event_time = 0.0
         self._ws = {}
-        self._command_sender = JpsCommandServer(self.sensor_callback, self.battery_callback)
+        self._command_sender = JpsCommandServer(['sensor', 'battery', 'events'], self.callback)
         self._command_sender.start()
         # https://github.com/miguelgrinberg/Flask-SocketIO/issues/65
         from gevent import monkey

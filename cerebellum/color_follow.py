@@ -34,17 +34,23 @@ class ColorExtract(object):
         center_x = image_width / 2
         center_y = image_height / 2
         red_area, red_centroid, red_image = self.get_colored_area(
-            cv_image, np.array([150,50,50]), np.array([180,255,255]))
+            cv_image, np.array([150,100,50]), np.array([180,255,255]))
         if red_area > 100:
             extracted_rate_x = float(red_centroid[0] - center_x) / image_width
             extracted_rate_y = float(red_centroid[1] - center_y) / image_height
             print('({x}, {y}: area={area}'.format(x=extracted_rate_x, y=extracted_rate_y, area=red_area))
-            if extracted_rate_x < -0.3:
-                self._vel_pub.publish(json.dumps({'x': 0, 'theta': 80}))
-            elif extracted_rate_x > 0.3:
-                self._vel_pub.publish(json.dumps({'x': 0, 'theta': -80}))
-            else:
-                self._vel_pub.publish(json.dumps({'x': 80, 'theta': 0}))
+            if extracted_rate_x < -0.4:
+                self._vel_pub.publish(json.dumps({'x': 0, 'theta': 50}))
+            elif extracted_rate_x < -0.2:
+                self._vel_pub.publish(json.dumps({'x': 0, 'theta': 30}))
+            elif extracted_rate_x > 0.4:
+                self._vel_pub.publish(json.dumps({'x': 0, 'theta': -50}))
+            elif extracted_rate_x > 0.2:
+                self._vel_pub.publish(json.dumps({'x': 0, 'theta': -30}))
+            elif red_area < 1000:
+                self._vel_pub.publish(json.dumps({'x': 50, 'theta': 0}))
+            elif red_area > 3000:
+                self._vel_pub.publish(json.dumps({'x': -50, 'theta': 0}))
 
 
 

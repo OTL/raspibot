@@ -53,9 +53,13 @@ class ColorExtract(object):
                 self._vel_pub.publish(json.dumps({'x': -50, 'theta': 0}))
 
 
+def main():
+    try:
+        color = ColorExtract()
+        color.main()
+    except KeyboardInterrupt:
+        pass
+
 
 if __name__ == '__main__':
-    color = ColorExtract()
-    color.main()
-    
-
+    main()

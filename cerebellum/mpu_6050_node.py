@@ -22,8 +22,8 @@ def main():
             data['rotation'] = {'x': rot[0], 'y': rot[1]}
             pub.publish(json.dumps(data))
             time.sleep(0.1)
-    except KeyboardInterrupt as e:
-        print e
+    except KeyboardInterrupt:
+        pass
 
 
 if __name__ == '__main__':

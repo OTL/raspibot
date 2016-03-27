@@ -52,8 +52,11 @@ class ChibiPiBotNode(object):
 
 
 def main():
-    node = ChibiPiBotNode('smilerobotics.com')
-    node.main()
+    try:
+        node = ChibiPiBotNode('smilerobotics.com')
+        node.main()
+    except KeyboardInterrupt:
+        pass
 
 if __name__ == '__main__':
     main()

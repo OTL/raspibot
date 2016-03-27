@@ -117,9 +117,13 @@ class VisionSensor(object):
 
 
 def main():
-    v = VisionSensor(host='smilerobotics.com')
-    v.main()
-    
+    try:
+        v = VisionSensor(host='smilerobotics.com')
+        v.main()
+    except KeyboardInterrupt:
+        pass
+
+
 if __name__ == '__main__':
     main()
     

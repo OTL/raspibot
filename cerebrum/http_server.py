@@ -88,7 +88,7 @@ class DataWithLock():
 
 class JpsImageReceiver:
     def __init__(self):
-        self._sub = jps.Subscriber('image', self.callback)
+        self._sub = jps.Subscriber('image_processed', self.callback)
         self.jpeg_image = DataWithLock()
 
     def spin(self):

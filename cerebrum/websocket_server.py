@@ -93,8 +93,12 @@ class WebsocketServer(object):
 
 
 def main():
-    s = WebsocketServer()
-    s.start()
+    try:
+        s = WebsocketServer()
+        s.start()
+    except KeyboardInterrupt:
+        pass
+
     
 if __name__ == '__main__':
     main()
